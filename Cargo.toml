@@ -1,0 +1,13 @@
+[package]
+name = "ccatoken"
+version = "0.1.0"
+edition = "2021"
+repository = "https://github.com/veraison/rust-ccatoken"
+license = "Apache-2.0"
+description = "CCA attestation token decoding, verification, and appraisal"
+keywords = [ "Arm", "CCA", "attestation" ]
+categories = [ "cryptography", "parser implementations" ]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
