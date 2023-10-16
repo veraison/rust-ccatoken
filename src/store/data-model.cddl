@@ -1,0 +1,81 @@
+start = rv-store / ta-store
+
+; common types
+hash-type = bytes .size 32 / bytes .size 48 / bytes .size 64
+impl-id-type = bytes .size 32
+inst-id-type = bytes .size 33
+perso-type = bytes .size 64
+rim-type = hash-type
+pem-type = text
+label = int / tstr
+values = any
+
+; sw components
+swcomp = {
+    ? &(type: 1) => text
+    &(value: 2) => hash-type
+    ? &(version: 4) => text 
+    &(signer: 5) => hash-type
+}
+
+; a platform ref-val, including fw measurements and platform config.
+; it describes an acceptable state for a certain platform, identified by impl-id.
+; there may be multiple platform-rv records for the same platform at any point in
+; time, each describing one possible "good" state.
+platform-rv = {
+    &(impl-id: 2396) => impl-id-type
+    &(swcomps: 2399) => [ + swcomp ]
+    &(config: 2401) => bytes
+}
+
+; a realm ref-val, including rim, rem and personalisation value
+; it describes an acceptable state for a given realm / CC workload.
+; there may be multiple realm-rv records for the same realm
+realm-rv = {
+    &(rim: 44238) => hash-type
+    ? &(rem: 44239) => [ 4*4 hash-type ]
+    ? &(perso: 44235) => perso-type
+    ; https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
+    &(rak-hash-algo: 44236) => text
+}
+
+; CCA reference values input format (JSON)
+refvalues = {
+    ? "platform" => [ + platform-rv ]
+    ? "realm" => [ + realm-rv ]
+}
+
+cpak = {
+    &(inst-id: 265) => inst-id-type
+    &(impl-id: 2396) => impl-id-type
+    &(pkey: -1) => COSE-Key
+}
+
+tas = [ + cpak ]
+
+COSE_Key = {
+    &(kty: 1) => tstr / int
+    ? &(kid: 2) => bstr
+    ? &(alg: 3) => tstr / int
+    ? &(key_ops: 4) => [+ (tstr / int) ]
+    ? &(base_iv: 5) => bstr
+    * label => values
+}
+
+; lookup tables
+rv-store = {
+    ; platform rvs, indexed by impl-id
+    ? &(platform: 0) => {
+        + impl-id-type => [ + platform-rv ]
+    }
+    ; realm rvs, indexed by rim
+    ? &(realm: 1) => {
+        + rim-type => [ + realm-rv ]
+    }
+}
+
+ta-store = {
+    + inst-id-type => [ + cpak ]
+}
+
+; lifecycle-secured-range = 12288...12543
