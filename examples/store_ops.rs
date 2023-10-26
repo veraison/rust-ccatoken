@@ -4,19 +4,20 @@
 extern crate ccatoken;
 
 use ccatoken::store::RefValueStore;
+use hex_literal::hex;
 
 fn main() {
     let j: &str = r#"{
         "platform": [
             {
-                "implementation-id": "/BASE64+ENCODED+VAL/",
-                "platform-configuration": "/BASE64+ENCODED+VAL/",
+                "implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "platform-configuration": "CFCFCFCF",
                 "sw-components": [
                     {
-                        "component-type": "[OPTIONAL] e.g., BL",
-                        "measurement-value": "/BASE64+ENCODED+VAL/",
-                        "signer-id": "/BASE64+ENCODED+VAL/",
-                        "version": "[OPTIONAL] e.g., 1.0.2rc5"
+                        "component-type": "BL",
+                        "measurement-value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        "signer-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        "version": "1.0.2rc5"
                     }
                 ]
             }
@@ -27,5 +28,10 @@ fn main() {
 
     s.load_json(j).unwrap();
 
-    println!("{:#?}", s.lookup_platform("/BASE64+ENCODED+VAL/"));
+    println!(
+        "{:#?}",
+        s.lookup_platform(&hex!(
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        ))
+    );
 }

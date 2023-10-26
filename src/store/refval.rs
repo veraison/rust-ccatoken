@@ -1,20 +1,25 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
+use hex_literal::hex;
 use multimap::MultiMap;
 use serde::Deserialize;
 use serde_json::Error;
+use std::sync::RwLock;
 
 /// CCA measured firmware component descriptor
+#[serde_with::serde_as]
 #[derive(Clone, Deserialize, Debug)]
 pub struct SWComponent {
     /// The measurement value
     #[serde(rename(deserialize = "measurement-value"))]
-    mval: String,
+    #[serde_as(as = "serde_with::hex::Hex")]
+    mval: Vec<u8>,
 
     /// The identifier of the ROTPK that signs the firmware image
     #[serde(rename(deserialize = "signer-id"))]
-    signer_id: String,
+    #[serde_as(as = "serde_with::hex::Hex")]
+    signer_id: Vec<u8>,
 
     /// (Optional) versionining information of the firmare release, e.g., using
     /// SemVer
@@ -31,11 +36,13 @@ pub struct SWComponent {
 /// platform, identified by its implementation identifier.  There may be
 /// multiple platform-rv records for the same platform at any point in time,
 /// each describing one possible "good" state.
+#[serde_with::serde_as]
 #[derive(Clone, Deserialize, Debug)]
 pub struct PlatformRefValue {
     /// The platform's implementation identifier
     #[serde(rename(deserialize = "implementation-id"))]
-    impl_id: String,
+    #[serde_as(as = "serde_with::hex::Hex")]
+    impl_id: [u8; 32],
 
     /// The TCB firmare components
     #[serde(rename(deserialize = "sw-components"))]
@@ -44,18 +51,21 @@ pub struct PlatformRefValue {
     /// The CCA platform config contains the System Properties field which is
     /// present in the Root NVS public parameters
     #[serde(rename(deserialize = "platform-configuration"))]
-    config: String,
+    #[serde_as(as = "serde_with::hex::Hex")]
+    config: Vec<u8>,
 }
 
 /// A realm reference value set, including RIM, REM and the personalisation
 /// value.  It describes an acceptable state for a given realm / CC workload.
 /// There may be multiple such records for the same realm, each describing one
 /// possible "good" state associated to the realm.
+#[serde_with::serde_as]
 #[derive(Clone, Deserialize, Debug)]
 pub struct RealmRefValue {
     /// The value of the Realm Initial Measurement
     #[serde(rename(deserialize = "initial-measurement"))]
-    rim: String,
+    #[serde_as(as = "serde_with::hex::Hex")]
+    rim: Vec<u8>,
 
     /// The Realm hash algorithm ID claim identifies the algorithm used to
     /// calculate all hash values which are present in the Realm token.  It is
@@ -89,6 +99,7 @@ impl RefValues {
     /// Parse CCA reference values from JSON
     pub fn parse(j: &str) -> Result<Self, Error> {
         let v: RefValues = serde_json::from_str(j)?;
+        // TODO: add validation of variable length fields
         Ok(v)
     }
 }
@@ -97,10 +108,10 @@ impl RefValues {
 #[derive(Debug)]
 pub struct RefValueStore {
     /// platform reference values, indexed by implementation-id
-    p: MultiMap<String, PlatformRefValue>,
+    p: RwLock<MultiMap<[u8; 32], PlatformRefValue>>,
 
     /// realm reference values, indexed by RIM
-    r: MultiMap<String, RealmRefValue>,
+    r: RwLock<MultiMap<Vec<u8>, RealmRefValue>>,
 }
 
 impl Default for RefValueStore {
@@ -112,8 +123,8 @@ impl Default for RefValueStore {
 impl RefValueStore {
     pub fn new() -> Self {
         Self {
-            p: MultiMap::new(),
-            r: MultiMap::new(),
+            p: Default::default(),
+            r: Default::default(),
         }
     }
 
@@ -126,7 +137,7 @@ impl RefValueStore {
             let p = v.platform.as_ref().unwrap();
 
             for prv in p.iter() {
-                self.p.insert(prv.impl_id.clone(), prv.clone());
+                self.p.write().unwrap().insert(prv.impl_id, prv.clone());
             }
         }
 
@@ -134,7 +145,7 @@ impl RefValueStore {
             let p = v.realm.as_ref().unwrap();
 
             for prv in p.iter() {
-                self.r.insert(prv.rim.clone(), prv.clone());
+                self.r.write().unwrap().insert(prv.rim.clone(), prv.clone());
             }
         }
 
@@ -142,13 +153,13 @@ impl RefValueStore {
     }
 
     /// Lookup all platform reference values matching the given implementation identifier
-    pub fn lookup_platform(&self, impl_id: &str) -> Option<&Vec<PlatformRefValue>> {
-        return self.p.get_vec(impl_id);
+    pub fn lookup_platform(&self, impl_id: &[u8; 32]) -> Option<Vec<PlatformRefValue>> {
+        return self.p.read().unwrap().get_vec(impl_id).cloned();
     }
 
     /// Lookup all realm reference values matching the given RIM
-    pub fn lookup_realm(&self, rim: &str) -> Option<&Vec<RealmRefValue>> {
-        return self.r.get_vec(rim);
+    pub fn lookup_realm(&self, rim: &Vec<u8>) -> Option<Vec<RealmRefValue>> {
+        return self.r.read().unwrap().get_vec(rim).cloned();
     }
 }
 
@@ -158,23 +169,26 @@ mod tests {
     const TEST_JSON_RV_OK_0: &str = r#"{
         "platform": [
             {
-                "implementation-id": "/BASE64+ENCODED+VAL/",
-                "platform-configuration": "/BASE64+ENCODED+VAL/",
+                "implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "platform-configuration": "CFCFCFCF",
                 "sw-components": [
                     {
-                        "component-type": "[OPTIONAL] e.g., BL",
-                        "measurement-value": "/BASE64+ENCODED+VAL/",
-                        "signer-id": "/BASE64+ENCODED+VAL/",
-                        "version": "[OPTIONAL] e.g., 1.0.2rc5"
+                        "component-type": "BL",
+                        "measurement-value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        "signer-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        "version": "1.0.2rc5"
                     }
                 ]
             }
         ]
     }"#;
-    const TEST_B64: &str = "/BASE64+ENCODED+VAL/";
-    const TEST_IMPL_ID_0: &str = TEST_B64;
-    const TEST_CONFIG_0: &str = TEST_B64;
-    const TEST_RIM_UNKNOWN: &str = TEST_B64;
+    const TEST_HEX: [u8; 32] =
+        hex!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    const TEST_IMPL_ID_0: [u8; 32] = TEST_HEX;
+    const TEST_MVAL_0_0: [u8; 32] = TEST_HEX;
+    const TEST_SID_0_0: [u8; 32] = TEST_HEX;
+    const TEST_CONFIG_0: [u8; 4] = hex!("CFCFCFCF");
+    const TEST_RIM_UNKNOWN: [u8; 4] = hex!("DEADBEEF");
 
     #[test]
     fn load_json_and_lookup_ok() {
@@ -184,7 +198,7 @@ mod tests {
         s.load_json(TEST_JSON_RV_OK_0).unwrap();
 
         // lookup a known platform reference value
-        let prv = s.lookup_platform(TEST_IMPL_ID_0);
+        let prv = s.lookup_platform(&TEST_IMPL_ID_0);
         assert!(prv.is_some());
 
         let res = prv.unwrap();
@@ -197,16 +211,13 @@ mod tests {
 
         let swcomp = &res0.sw_components[0];
         assert!(swcomp.mtyp.is_some());
-        assert_eq!(swcomp.mtyp.as_ref().unwrap(), "[OPTIONAL] e.g., BL");
-        assert_eq!(swcomp.mval, "/BASE64+ENCODED+VAL/");
-        assert_eq!(swcomp.signer_id, "/BASE64+ENCODED+VAL/");
+        assert_eq!(swcomp.mtyp.as_ref().unwrap(), "BL");
+        assert_eq!(swcomp.mval, TEST_MVAL_0_0);
+        assert_eq!(swcomp.signer_id, TEST_SID_0_0);
         assert!(swcomp.version.is_some());
-        assert_eq!(
-            swcomp.version.as_ref().unwrap(),
-            "[OPTIONAL] e.g., 1.0.2rc5"
-        );
+        assert_eq!(swcomp.version.as_ref().unwrap(), "1.0.2rc5");
 
-        let rrv = s.lookup_realm(TEST_RIM_UNKNOWN);
+        let rrv = s.lookup_realm(&TEST_RIM_UNKNOWN.into());
         assert!(rrv.is_none());
     }
 }
