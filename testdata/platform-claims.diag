@@ -1,0 +1,57 @@
+/ CCA platform claim map /
+{
+  / cca-platform-profile /
+  265: "http://arm.com/CCA-SSD/1.0.0",
+
+  / cca-platform-challenge /
+  10: h'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+
+  / cca-platform-implementation-id /
+  2396: h'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+
+  / cca-platform-instance-id /
+  256: h'010BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+
+  / cca-platform-config /
+  2401: h'CFCFCFCF',
+
+  / cca-platform-lifecycle /
+  2395: 12288,
+
+  / cca-platform-sw-components /
+  2399: [
+    {
+      / measurement value /
+      2: h'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+
+      / signer id /
+      5: h'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+
+      / version /
+      4: "1.0.0",
+
+      / hash algorithm identifier /
+      6: "sha-256"
+
+    },
+    {
+      / measurement value /
+      2: h'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+
+      / signer id /
+      5: h'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+
+      / version /
+      4: "1.0.0",
+
+      / hash algorithm identifier /
+      6: "sha-256"
+    }
+  ],
+
+  / cca-platform-verification-service /
+  2400: "https://cca_verifier.org",
+
+  / cca-platform-hash-algo-id /
+  2402: "sha-256"
+}

@@ -5,8 +5,6 @@ extern crate ccatoken;
 
 use ccatoken::token::Realm;
 use std::fs;
-use std::fs::File;
-use std::io::Read;
 
 fn main() {
     realm_tokens_decode();
