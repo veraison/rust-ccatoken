@@ -148,24 +148,7 @@ impl Realm {
             ));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "public-key-hash-algo-id MUST be tstr".to_string(),
-            ));
-        }
-
-        let x = _x.unwrap().to_string();
-
-        if !is_valid_hash(&x) {
-            return Err(Error::Sema(format!(
-                "unknown public-key-hash-algo-id {}",
-                x
-            )));
-        }
-
-        self.rak_hash_alg = x;
+        self.rak_hash_alg = to_hash_alg(v, "public-key-hash-algo-id")?;
 
         self.claims_set.set(Claims::RakHashAlg);
 
@@ -177,19 +160,7 @@ impl Realm {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("hash-algo-id MUST be tstr".to_string()));
-        }
-
-        let x = _x.unwrap().to_string();
-
-        if !is_valid_hash(&x) {
-            return Err(Error::Sema(format!("unknown hash-algo-id {}", x)));
-        }
-
-        self.hash_alg = x;
+        self.hash_alg = to_hash_alg(v, "hash-algo-id")?;
 
         self.claims_set.set(Claims::HashAlg);
 
@@ -201,24 +172,7 @@ impl Realm {
             return Err(Error::DuplicatedClaim("initial-measurement".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "initial-measurement MUST be bstr".to_string(),
-            ));
-        }
-
-        let x = _x.unwrap().clone();
-
-        if !is_valid_measurement(&x) {
-            return Err(Error::Sema(format!(
-                "initial-measurement: expecting 32, 48 or 64 bytes, got {}",
-                x.len()
-            )));
-        }
-
-        self.rim = x;
+        self.rim = to_measurement(v, "initial-measurement")?;
 
         self.claims_set.set(Claims::Rim);
 
@@ -279,26 +233,7 @@ impl Realm {
         }
 
         for (i, xi) in x.iter().enumerate() {
-            let _xi = xi.as_bytes();
-
-            if _xi.is_none() {
-                return Err(Error::TypeMismatch(format!(
-                    "extensible-measurements[{}] MUST be bstr",
-                    i
-                )));
-            }
-
-            let xi = _xi.unwrap().clone();
-
-            if !is_valid_measurement(&xi) {
-                return Err(Error::Sema(format!(
-                    "extensible-measurements[{}]: expecting 32, 48 or 64 bytes, got {}",
-                    i,
-                    xi.len()
-                )));
-            }
-
-            self.rem[i] = xi;
+            self.rem[i] = to_measurement(xi, format!("extensible-measurement[{}]", i).as_str())?;
         }
 
         self.claims_set.set(Claims::Rem);

@@ -61,17 +61,7 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("hash-algo-id MUST be tstr".to_string()));
-        }
-
-        let x = _x.unwrap().to_string();
-
-        if !is_valid_hash(&x) {
-            return Err(Error::Sema(format!("unknown hash-algo-id {}", x)));
-        }
+        let x = to_hash_alg(v, "hash-algo-id")?;
 
         self.hash_alg = Some(x);
 
@@ -85,19 +75,9 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("signer-id".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("signer-id MUST be bstr".to_string()));
-        }
-
-        let x = _x.unwrap().clone();
-
-        self.signer_id = x;
+        self.signer_id = to_bstr(v, "signer-id")?;
 
         self.claims_set.set(SwClaims::SignerID);
-
-        println!("set_signer_id");
 
         Ok(())
     }
@@ -107,13 +87,7 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("version".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("version MUST be tstr".to_string()));
-        }
-
-        let x = _x.unwrap().to_string();
+        let x = to_tstr(v, "version")?;
 
         self.version = Some(x);
 
@@ -127,15 +101,7 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("measurement-type".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "measurement-type MUST be tstr".to_string(),
-            ));
-        }
-
-        let x = _x.unwrap().to_string();
+        let x = to_tstr(v, "measurement-type")?;
 
         self.mtyp = Some(x);
 
@@ -149,25 +115,7 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("measurement-value".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "measurement-value MUST be bstr".to_string(),
-            ));
-        }
-
-        let x = _x.unwrap().clone();
-        let x_len = x.len();
-
-        if !is_valid_measurement(&x) {
-            return Err(Error::Sema(format!(
-                "measurement-value: expecting 32, 48 or 64 bytes, got {}",
-                x_len
-            )));
-        }
-
-        self.mval = x;
+        self.mval = to_measurement(v, "measurement-value")?;
 
         self.claims_set.set(SwClaims::MVal);
 
@@ -306,13 +254,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("profile".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("profile MUST be string".to_string()));
-        }
-
-        let x = _x.unwrap().to_string();
+        let x = to_tstr(v, "profile")?;
 
         if x != PLATFORM_PROFILE {
             return Err(Error::Sema(format!("unknown profile {}", x)));
@@ -330,23 +272,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("challenge".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("challenge MUST be bstr".to_string()));
-        }
-
-        let x = _x.unwrap().clone();
-        let x_len = x.len();
-
-        if !is_valid_measurement(&x) {
-            return Err(Error::Sema(format!(
-                "nonce: expecting 32, 48 or 64 bytes, got {}",
-                x_len
-            )));
-        }
-
-        self.challenge = x;
+        self.challenge = to_measurement(v, "challenge")?;
 
         self.claims_set.set(Claims::Challenge);
 
@@ -358,15 +284,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("implementation-id".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "implementation-id MUST be bstr".to_string(),
-            ));
-        }
-
-        let x = v.as_bytes().unwrap().clone();
+        let x = to_bstr(v, "implementation-id")?;
         let x_len = x.len();
 
         if x_len != 32 {
@@ -388,13 +306,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("instance-id".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("instance-id MUST be bstr".to_string()));
-        }
-
-        let x = v.as_bytes().unwrap().clone();
+        let x = to_bstr(v, "instance-id")?;
         let x_len = x.len();
 
         if x_len != 33 {
@@ -416,15 +328,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("config".to_string()));
         }
 
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("config MUST be bstr".to_string()));
-        }
-
-        let x = _x.unwrap().clone();
-
-        self.config = x;
+        self.config = to_bstr(v, "config")?;
 
         self.claims_set.set(Claims::Config);
 
@@ -436,15 +340,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("lifecycle".to_string()));
         }
 
-        let _x = v.as_integer();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "lifecycle MUST be uint .size 2".to_string(),
-            ));
-        }
-
-        let _lc: i128 = _x.unwrap().into();
+        let _lc: i128 = to_int(v, "lifecycle")?;
 
         if !is_valid_lifecycle(_lc) {
             return Err(Error::Sema(format!("unknown lifecycle {}", _lc)));
@@ -462,19 +358,13 @@ impl Platform {
             return Err(Error::DuplicatedClaim("verification-service".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "verification-service MUST be tstr".to_string(),
-            ));
-        }
+        let _x = to_tstr(v, "verification-service")?;
 
         // no specific validation is required: VSI could be a URL, but not
         // necessarily so.  We could maybe check for positive len() but I'm
         // not sure it's worth it.
 
-        self.verification_service = Some(_x.unwrap().to_string());
+        self.verification_service = Some(_x);
 
         self.claims_set.set(Claims::Vsi);
 
@@ -487,19 +377,7 @@ impl Platform {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch("hash-algo-id MUST be tstr".to_string()));
-        }
-
-        let x = _x.unwrap().to_string();
-
-        if !is_valid_hash(&x) {
-            return Err(Error::Sema(format!("unknown hash-algo-id {}", x)));
-        }
-
-        self.hash_alg = x;
+        self.hash_alg = to_hash_alg(v, "hash-algo-id")?;
 
         self.claims_set.set(Claims::HashAlg);
 

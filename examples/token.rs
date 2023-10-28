@@ -18,6 +18,6 @@ fn realm_tokens_decode() {
 
         let rc = Realm::decode(&buf).unwrap();
 
-        println!("{:?}", rc);
+        println!("{:#?}", rc);
     }
 }
