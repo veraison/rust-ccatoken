@@ -99,33 +99,10 @@ impl TrustAnchorStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const TEST_JSON_TA_OK_0: &str = r#"[
-        {
-            "instance-id": "01AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            "implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            "pkey": {
-                "crv": "P-256",
-                "kty": "EC",
-                "x": "TKRFE_RwSXooI8DdatPOYg_uiKm2XrtT_uEMEvqQZrw",
-                "y": "CRx3H8NHN1lcxqKi92P0OsZBxX3VFaktllpD3SjtN7s"
-            }
-        }
-    ]"#;
-    const TEST_INST_ID_0: [u8; 33] = hex!(
-        "01
-         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    );
-    const TEST_IMPL_ID_0: [u8; 32] = hex!(
-        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    );
-    const TEST_PKEY_0: &str = r#"{
-        "crv": "P-256",
-        "kty": "EC",
-        "x": "TKRFE_RwSXooI8DdatPOYg_uiKm2XrtT_uEMEvqQZrw",
-        "y": "CRx3H8NHN1lcxqKi92P0OsZBxX3VFaktllpD3SjtN7s"
-    }"#;
+    const TEST_JSON_TA_OK_0: &str = include_str!("../../testdata/ta.json");
+    const TEST_INST_ID_0: &[u8; 33] = include_bytes!("../../testdata/inst-id.bin");
+    const TEST_IMPL_ID_0: &[u8; 32] = include_bytes!("../../testdata/impl-id.bin");
+    const TEST_PKEY_0: &str = include_str!("../../testdata/pkey.json");
 
     #[test]
     fn load_json_and_lookup_ok() {
@@ -135,13 +112,13 @@ mod tests {
         s.load_json(TEST_JSON_TA_OK_0).unwrap();
 
         // lookup a known platform reference value
-        let ta = s.lookup(&TEST_INST_ID_0);
+        let ta = s.lookup(TEST_INST_ID_0);
         assert!(ta.is_some());
 
         let res = ta.unwrap();
 
-        assert_eq!(res.inst_id, TEST_INST_ID_0);
-        assert_eq!(res.impl_id, TEST_IMPL_ID_0);
+        assert_eq!(res.inst_id, *TEST_INST_ID_0);
+        assert_eq!(res.impl_id, *TEST_IMPL_ID_0);
 
         let pkey = serde_json::from_str::<JsonWebKey>(TEST_PKEY_0).unwrap();
         assert_eq!(res.pkey, Some(pkey));
