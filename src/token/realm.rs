@@ -1,40 +1,14 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::common::*;
+use super::errors::Error;
 use bitmask::*;
 use ciborium::de::from_reader;
 use ciborium::Value;
 use hex_literal::hex;
 
-#[derive(thiserror::Error, PartialEq, Eq)]
-pub enum Error {
-    #[error("Syntax error: {0}")]
-    Syntax(String),
-    #[error("Semantic error: {0}")]
-    Sema(String),
-    #[error("Unknown claim: {0}")]
-    UnknownClaim(String),
-    #[error("Missing claim: {0}")]
-    MissingClaim(String),
-    #[error("Claim type mismatch: {0}")]
-    TypeMismatch(String),
-}
-
-impl std::fmt::Debug for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Syntax(e)
-            | Error::Sema(e)
-            | Error::UnknownClaim(e)
-            | Error::MissingClaim(e)
-            | Error::TypeMismatch(e) => {
-                write!(f, "{}", e)
-            }
-        }
-    }
-}
-
-const EAT_NONCE_LABEL: i128 = 10;
+const REALM_CHALLENGE_LABEL: i128 = 10;
 const REALM_PERSO_LABEL: i128 = 44235;
 const REALM_RIM_LABEL: i128 = 44238;
 const REALM_REM_LABEL: i128 = 44239;
@@ -45,36 +19,18 @@ const REALM_RAK_HASH_ALG_LABEL: i128 = 44240;
 bitmask! {
     #[derive(Debug)]
     mask ClaimsSet: u8 where flags Claims {
-        EatNonce   = 0b00000001,
-        Perso      = 0b00000010,
-        Rim        = 0b00000100,
-        Rem        = 0b00001000,
-        HashAlg    = 0b00010000,
-        Rak        = 0b00100000,
-        RakHashAlg = 0b01000000,
+        Challenge  = 0x01,
+        Perso      = 0x02,
+        Rim        = 0x04,
+        Rem        = 0x08,
+        HashAlg    = 0x10,
+        Rak        = 0x20,
+        RakHashAlg = 0x40,
     }
 }
 
-// See https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
-fn is_valid_hash(value: &str) -> bool {
-    matches!(
-        value,
-        "md2"
-            | "md5"
-            | "sha-1"
-            | "sha-224"
-            | "sha-256"
-            | "sha-384"
-            | "sha-512"
-            | "shake128"
-            | "shake256"
-    )
-}
-
-fn is_valid_measurement(value: &Vec<u8>) -> bool {
-    matches!(value.len(), 32 | 48 | 64)
-}
-
+/// For syntax and semantics of the claims-set, see §A.7.2.3.1 of "Realm
+/// Management Monitor (RMM) Specification" v.1.0-eac4
 #[derive(Debug)]
 pub struct Realm {
     challenge: [u8; 64],  //    10 => bytes .size 64
@@ -115,7 +71,7 @@ impl Realm {
             return Err(Error::Syntax("expecting map type".to_string()));
         }
 
-        let mut rc: Realm = Realm::new();
+        let mut rc: Realm = Default::default();
 
         // Process key/val pairs in the CBOR map
         // Note that EAT wants us to ignore unknown claims
@@ -130,14 +86,14 @@ impl Realm {
             let k: i128 = _k.unwrap().into();
 
             match k {
-                EAT_NONCE_LABEL => rc.set_challenge(&i.1)?,
+                REALM_CHALLENGE_LABEL => rc.set_challenge(&i.1)?,
                 REALM_PERSO_LABEL => rc.set_perso(&i.1)?,
                 REALM_RIM_LABEL => rc.set_rim(&i.1)?,
                 REALM_REM_LABEL => rc.set_rem(&i.1)?,
                 REALM_HASH_ALG_LABEL => rc.set_hash_alg(&i.1)?,
                 REALM_RAK_LABEL => rc.set_rak(&i.1)?,
                 REALM_RAK_HASH_ALG_LABEL => rc.set_rak_hash_alg(&i.1)?,
-                _ => {}
+                _ => continue,
             }
         }
 
@@ -149,13 +105,19 @@ impl Realm {
     fn validate(&self) -> Result<(), Error> {
         // all realm claims are mandatory
         if !self.claims_set.is_all() {
-            return Err(Error::MissingClaim("TODO".to_string()));
+            return Err(Error::MissingClaim("todo".to_string()));
         }
+
+        // TODO: hash-type'd measurements are compatible with hash-alg
 
         Ok(())
     }
 
     fn set_challenge(&mut self, v: &Value) -> Result<(), Error> {
+        if self.claims_set.contains(Claims::Challenge) {
+            return Err(Error::DuplicatedClaim("challenge".to_string()));
+        }
+
         let _x = v.as_bytes();
 
         if _x.is_none() {
@@ -174,30 +136,19 @@ impl Realm {
 
         self.challenge[..].clone_from_slice(&x);
 
-        self.claims_set.set(Claims::EatNonce);
+        self.claims_set.set(Claims::Challenge);
 
         Ok(())
     }
 
     fn set_rak_hash_alg(&mut self, v: &Value) -> Result<(), Error> {
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "public-key-hash-algo-id MUST be string".to_string(),
+        if self.claims_set.contains(Claims::RakHashAlg) {
+            return Err(Error::DuplicatedClaim(
+                "public-key-hash-algo-id".to_string(),
             ));
         }
 
-        let x = _x.unwrap().to_string();
-
-        if !is_valid_hash(&x) {
-            return Err(Error::Sema(format!(
-                "unknown public-key-hash-algo-id {}",
-                x
-            )));
-        }
-
-        self.rak_hash_alg = x;
+        self.rak_hash_alg = to_hash_alg(v, "public-key-hash-algo-id")?;
 
         self.claims_set.set(Claims::RakHashAlg);
 
@@ -205,21 +156,11 @@ impl Realm {
     }
 
     fn set_hash_alg(&mut self, v: &Value) -> Result<(), Error> {
-        let _x = v.as_text();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "hash-algo-id MUST be string".to_string(),
-            ));
+        if self.claims_set.contains(Claims::HashAlg) {
+            return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
-        let x = _x.unwrap().to_string();
-
-        if !is_valid_hash(&x) {
-            return Err(Error::Sema(format!("unknown hash-algo-id {}", x)));
-        }
-
-        self.hash_alg = x;
+        self.hash_alg = to_hash_alg(v, "hash-algo-id")?;
 
         self.claims_set.set(Claims::HashAlg);
 
@@ -227,24 +168,11 @@ impl Realm {
     }
 
     fn set_rim(&mut self, v: &Value) -> Result<(), Error> {
-        let _x = v.as_bytes();
-
-        if _x.is_none() {
-            return Err(Error::TypeMismatch(
-                "initial-measurement MUST be bstr".to_string(),
-            ));
+        if self.claims_set.contains(Claims::Rim) {
+            return Err(Error::DuplicatedClaim("initial-measurement".to_string()));
         }
 
-        let x = _x.unwrap().clone();
-
-        if !is_valid_measurement(&x) {
-            return Err(Error::Sema(format!(
-                "initial-measurement: expecting 32, 48 or 64 bytes, got {}",
-                x.len()
-            )));
-        }
-
-        self.rim = x;
+        self.rim = to_measurement(v, "initial-measurement")?;
 
         self.claims_set.set(Claims::Rim);
 
@@ -252,6 +180,10 @@ impl Realm {
     }
 
     fn set_rak(&mut self, v: &Value) -> Result<(), Error> {
+        if self.claims_set.contains(Claims::Rak) {
+            return Err(Error::DuplicatedClaim("public-key".to_string()));
+        }
+
         let _x = v.as_bytes();
 
         if _x.is_none() {
@@ -276,6 +208,12 @@ impl Realm {
     }
 
     fn set_rem(&mut self, v: &Value) -> Result<(), Error> {
+        if self.claims_set.contains(Claims::Rem) {
+            return Err(Error::DuplicatedClaim(
+                "extensible-measurements".to_string(),
+            ));
+        }
+
         let _x = v.as_array();
 
         if _x.is_none() {
@@ -294,28 +232,8 @@ impl Realm {
             )));
         }
 
-        for (mut i, xi) in x.iter().enumerate() {
-            let _xi = xi.as_bytes();
-
-            if _xi.is_none() {
-                return Err(Error::TypeMismatch(format!(
-                    "extensible-measurements[{}] MUST be bstr",
-                    i
-                )));
-            }
-
-            let xi = _xi.unwrap().clone();
-
-            if !is_valid_measurement(&xi) {
-                return Err(Error::Sema(format!(
-                    "extensible-measurements[{}]: expecting 32, 48 or 64 bytes, got {}",
-                    i,
-                    xi.len()
-                )));
-            }
-
-            self.rem[i] = xi;
-            i += 1;
+        for (i, xi) in x.iter().enumerate() {
+            self.rem[i] = to_measurement(xi, format!("extensible-measurement[{}]", i).as_str())?;
         }
 
         self.claims_set.set(Claims::Rem);
@@ -324,6 +242,10 @@ impl Realm {
     }
 
     fn set_perso(&mut self, v: &Value) -> Result<(), Error> {
+        if self.claims_set.contains(Claims::Perso) {
+            return Err(Error::DuplicatedClaim("personalization-value".to_string()));
+        }
+
         let _x = v.as_bytes();
 
         if _x.is_none() {
