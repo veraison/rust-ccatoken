@@ -1,9 +1,12 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::errors::Error;
 use hex_literal::hex;
+use jsonwebkey as jwk;
+use jwk::JsonWebKey;
 use serde::Deserialize;
-use serde_json::Error;
+use serde_json::value::RawValue;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -14,8 +17,10 @@ pub struct Cpak {
     /// The CPAK (a raw public key) wrapped in a Subject Public Key Info and
     /// serialised using the textual encoding described in §13 of RFC7468
     #[serde(rename(deserialize = "pkey"))]
-    #[serde_as(as = "serde_with::hex::Hex")]
-    pkey: [u8; 97],
+    raw_pkey: Box<RawValue>,
+
+    #[serde(skip)]
+    pkey: Option<jwk::JsonWebKey>,
 
     /// The CCA platform Implementation ID claim uniquely identifies the
     /// implementation of the CCA platform.  The semantics of the CCA platform
@@ -34,6 +39,20 @@ pub struct Cpak {
     #[serde(rename(deserialize = "instance-id"))]
     #[serde_as(as = "serde_with::hex::Hex")]
     inst_id: [u8; 33],
+}
+
+impl Cpak {
+    pub fn parse_pkey(&mut self) -> Result<(), Error> {
+        let s = self.raw_pkey.get();
+
+        let pkey = serde_json::from_str::<JsonWebKey>(s)
+            .map_err(|e| Error::Syntax(e.to_string()))?
+            .clone();
+
+        self.pkey = Some(pkey);
+
+        Ok(())
+    }
 }
 
 /// The store where the active CPAKs are stashed.  CPAKs are indexed by their
@@ -60,9 +79,11 @@ impl TrustAnchorStore {
     /// Add to an existing (and possibly empty) TrustAnchorStore the trust
     /// anchors loaded from the given JSON file
     pub fn load_json(&mut self, j: &str) -> Result<(), Error> {
-        let tas: Vec<Cpak> = serde_json::from_str(j)?;
+        let mut tas: Vec<Cpak> =
+            serde_json::from_str(j).map_err(|e| Error::Syntax(e.to_string()))?;
 
-        for ta in tas.iter() {
+        for ta in tas.iter_mut() {
+            ta.parse_pkey()?;
             self.p.write().unwrap().insert(ta.inst_id, ta.clone());
         }
 
@@ -82,7 +103,12 @@ mod tests {
         {
             "instance-id": "01AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             "implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-            "pkey": "0476F988091BE585ED41801AECFAB858548C63057E16B0E676120BBD0D2F9C29E056C5D41A0130EB9C21517899DC23146B28E1B062BD3EA4B315FD219F1CBB528CB6E74CA49BE16773734F61A1CA61031B2BBF3D918F2F94FFC4228E50919544AE"
+            "pkey": {
+                "crv": "P-256",
+                "kty": "EC",
+                "x": "TKRFE_RwSXooI8DdatPOYg_uiKm2XrtT_uEMEvqQZrw",
+                "y": "CRx3H8NHN1lcxqKi92P0OsZBxX3VFaktllpD3SjtN7s"
+            }
         }
     ]"#;
     const TEST_INST_ID_0: [u8; 33] = hex!(
@@ -94,15 +120,12 @@ mod tests {
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
          AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     );
-    const TEST_PKEY_0: [u8; 97] = hex!(
-        "0476F988091BE585ED41801AECFAB858
-         548C63057E16B0E676120BBD0D2F9C29
-         E056C5D41A0130EB9C21517899DC2314
-         6B28E1B062BD3EA4B315FD219F1CBB52
-         8CB6E74CA49BE16773734F61A1CA6103
-         1B2BBF3D918F2F94FFC4228E50919544
-         AE"
-    );
+    const TEST_PKEY_0: &str = r#"{
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "TKRFE_RwSXooI8DdatPOYg_uiKm2XrtT_uEMEvqQZrw",
+        "y": "CRx3H8NHN1lcxqKi92P0OsZBxX3VFaktllpD3SjtN7s"
+    }"#;
 
     #[test]
     fn load_json_and_lookup_ok() {
@@ -119,6 +142,8 @@ mod tests {
 
         assert_eq!(res.inst_id, TEST_INST_ID_0);
         assert_eq!(res.impl_id, TEST_IMPL_ID_0);
-        assert_eq!(res.pkey, TEST_PKEY_0);
+
+        let pkey = serde_json::from_str::<JsonWebKey>(TEST_PKEY_0).unwrap();
+        assert_eq!(res.pkey, Some(pkey));
     }
 }

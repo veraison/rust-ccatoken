@@ -204,6 +204,7 @@ impl Platform {
         }
     }
 
+    /// Decode a CBOR encoded CCA platform claims-set
     pub fn decode(buf: &Vec<u8>) -> Result<Platform, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 

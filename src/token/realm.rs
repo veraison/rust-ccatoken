@@ -64,6 +64,7 @@ impl Realm {
         }
     }
 
+    /// Decode a CBOR encoded CCA realm claims-set
     pub fn decode(buf: &Vec<u8>) -> Result<Realm, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 
