@@ -1,0 +1,59 @@
+{
+    "platform": [
+        {
+            "implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "platform-configuration": "CFCFCFCF",
+            "sw-components": [
+                {
+                    "component-type": "BL",
+                    "measurement-value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "signer-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                    "version": "1.0.2rc5"
+                }
+            ]
+        },
+        {
+            "implementation-id": "7F454C4602010100000000000000000003003E00010000005058000000000000",
+            "platform-configuration": "0107060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918",
+            "sw-components": [
+                {
+                    "component-type": "BL",
+                    "signer-id": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918",
+                    "version": "3.4.2",
+                    "measurement-value": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918"
+                },
+                {
+                    "component-type": "M1",
+                    "signer-id": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918",
+                    "version": "1.2",
+                    "measurement-value": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918"
+                },
+                {
+                    "component-type": "M2",
+                    "signer-id": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918",
+                    "version": "1.2.3",
+                    "measurement-value": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918"
+                },
+                {
+                    "component-type": "M3",
+                    "signer-id": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918",
+                    "version": "1",
+                    "measurement-value": "07060504030201000F0E0D0C0B0A090817161514131211101F1E1D1C1B1A1918"
+                }
+            ]
+        }
+    ],
+    "realm": [
+        {
+            "personalization-value": "54686520717569636B2062726F776E20666F78206A756D7073206F766572203133206C617A7920646F67732E54686520717569636B2062726F776E20666F7820",
+            "initial-measurement": "0000000000000000000000000000000000000000000000000000000000000000",
+            "extensible-measurements": [
+                "0000000000000000000000000000000000000000000000000000000000000000",
+                "0000000000000000000000000000000000000000000000000000000000000000",
+                "0000000000000000000000000000000000000000000000000000000000000000",
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            ],
+            "rak-hash-algorithm": "sha-256"
+        }
+    ]
+}
