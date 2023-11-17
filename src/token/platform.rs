@@ -456,6 +456,7 @@ impl Platform {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
