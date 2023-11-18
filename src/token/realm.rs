@@ -76,24 +76,20 @@ impl Realm {
 
         // Process key/val pairs in the CBOR map
         // Note that EAT wants us to ignore unknown claims
-        for i in v.as_map().unwrap().iter() {
-            let _k = i.0.as_integer();
-
-            // CCA does not define any text key
-            if _k.is_none() {
+        for (k, v) in v.as_map().unwrap().iter() {
+            if !k.is_integer() {
+                // CCA does not define any non-integer key
                 continue;
             }
 
-            let k: i128 = _k.unwrap().into();
-
-            match k {
-                REALM_CHALLENGE_LABEL => rc.set_challenge(&i.1)?,
-                REALM_PERSO_LABEL => rc.set_perso(&i.1)?,
-                REALM_RIM_LABEL => rc.set_rim(&i.1)?,
-                REALM_REM_LABEL => rc.set_rem(&i.1)?,
-                REALM_HASH_ALG_LABEL => rc.set_hash_alg(&i.1)?,
-                REALM_RAK_LABEL => rc.set_rak(&i.1)?,
-                REALM_RAK_HASH_ALG_LABEL => rc.set_rak_hash_alg(&i.1)?,
+            match k.as_integer().unwrap().into() {
+                REALM_CHALLENGE_LABEL => rc.set_challenge(v)?,
+                REALM_PERSO_LABEL => rc.set_perso(v)?,
+                REALM_RIM_LABEL => rc.set_rim(v)?,
+                REALM_REM_LABEL => rc.set_rem(v)?,
+                REALM_HASH_ALG_LABEL => rc.set_hash_alg(v)?,
+                REALM_RAK_LABEL => rc.set_rak(v)?,
+                REALM_RAK_HASH_ALG_LABEL => rc.set_rak_hash_alg(v)?,
                 _ => continue,
             }
         }
@@ -106,7 +102,7 @@ impl Realm {
     fn validate(&self) -> Result<(), Error> {
         // all realm claims are mandatory
         if !self.claims_set.is_all() {
-            return Err(Error::MissingClaim("todo".to_string()));
+            return Err(Error::MissingClaim("TODO".to_string()));
         }
 
         // TODO: hash-type'd measurements are compatible with hash-alg

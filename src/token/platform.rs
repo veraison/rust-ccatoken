@@ -214,26 +214,22 @@ impl Platform {
 
         let mut pc: Platform = Default::default();
 
-        for i in v.as_map().unwrap().iter() {
-            let _k = i.0.as_integer();
-
-            // CCA does not define any text key
-            if _k.is_none() {
+        for (k, v) in v.as_map().unwrap().iter() {
+            if !k.is_integer() {
+                // CCA does not define any non-integer key
                 continue;
             }
 
-            let k: i128 = _k.unwrap().into();
-
-            match k {
-                PLATFORM_PROFILE_LABEL => pc.set_profile(&i.1)?,
-                PLATFORM_CHALLENGE_LABEL => pc.set_challenge(&i.1)?,
-                PLATFORM_IMPL_ID_LABEL => pc.set_impl_id(&i.1)?,
-                PLATFORM_INST_ID_LABEL => pc.set_inst_id(&i.1)?,
-                PLATFORM_CONFIG_LABEL => pc.set_config(&i.1)?,
-                PLATFORM_LIFECYCLE_LABEL => pc.set_lifecycle(&i.1)?,
-                PLATFORM_SW_COMPONENTS => pc.set_sw_components(&i.1)?,
-                PLATFORM_VERIFICATION_SERVICE => pc.set_vsi(&i.1)?,
-                PLATFORM_HASH_ALG => pc.set_hash_alg(&i.1)?,
+            match k.as_integer().unwrap().into() {
+                PLATFORM_PROFILE_LABEL => pc.set_profile(v)?,
+                PLATFORM_CHALLENGE_LABEL => pc.set_challenge(v)?,
+                PLATFORM_IMPL_ID_LABEL => pc.set_impl_id(v)?,
+                PLATFORM_INST_ID_LABEL => pc.set_inst_id(v)?,
+                PLATFORM_CONFIG_LABEL => pc.set_config(v)?,
+                PLATFORM_LIFECYCLE_LABEL => pc.set_lifecycle(v)?,
+                PLATFORM_SW_COMPONENTS => pc.set_sw_components(v)?,
+                PLATFORM_VERIFICATION_SERVICE => pc.set_vsi(v)?,
+                PLATFORM_HASH_ALG => pc.set_hash_alg(v)?,
                 _ => continue,
             }
         }
@@ -244,8 +240,25 @@ impl Platform {
     }
 
     fn validate(&self) -> Result<(), Error> {
+        // all platform claims are mandatory except vsi
+        let mandatory_claims = [
+            (Claims::Profile, "profile"),
+            (Claims::Challenge, "challenge"),
+            (Claims::ImplID, "implementation-id"),
+            (Claims::InstID, "instance-id"),
+            (Claims::Config, "config"),
+            (Claims::Lifecycle, "lifecycle"),
+            (Claims::SwComponents, "sw-components"),
+            (Claims::HashAlg, "hash-algo"),
+        ];
+
+        for (c, n) in mandatory_claims.iter() {
+            if !self.claims_set.contains(*c) {
+                return Err(Error::MissingClaim(n.to_string()));
+            }
+        }
+
         // TODO:
-        // * all platform claims are mandatory except vsi
         // * hash-type'd measurements are compatible with hash-alg
         Ok(())
     }
