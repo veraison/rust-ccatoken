@@ -101,8 +101,20 @@ impl Realm {
 
     fn validate(&self) -> Result<(), Error> {
         // all realm claims are mandatory
-        if !self.claims_set.is_all() {
-            return Err(Error::MissingClaim("TODO".to_string()));
+        let mandatory_claims = [
+            (Claims::Challenge, "challenge"),
+            (Claims::Perso, "personalization-value"),
+            (Claims::Rim, "initial-measurement"),
+            (Claims::Rem, "extensible-measurements"),
+            (Claims::HashAlg, "hash-algo-id"),
+            (Claims::Rak, "public-key"),
+            (Claims::RakHashAlg, "public-key-hash-algo-id"),
+        ];
+
+        for (c, n) in mandatory_claims.iter() {
+            if !self.claims_set.contains(*c) {
+                return Err(Error::MissingClaim(n.to_string()));
+            }
         }
 
         // TODO: hash-type'd measurements are compatible with hash-alg
@@ -126,8 +138,7 @@ impl Realm {
 
         if x_len != 64 {
             return Err(Error::Sema(format!(
-                "nonce: expecting 64 bytes, got {}",
-                x_len
+                "challenge: expecting 64 bytes, got {x_len}"
             )));
         }
 
