@@ -85,7 +85,11 @@ impl CBORCollection {
                 match (*i).into() {
                     PLATFORM_LABEL => self.set_platform_token(v)?,
                     REALM_LABEL => self.set_realm_token(v)?,
-                    x => return Err(Error::Syntax(format!("unknown key {x} in collection"))),
+                    unknown => {
+                        return Err(Error::Syntax(format!(
+                            "unknown key {unknown} in collection"
+                        )))
+                    }
                 }
             } else {
                 return Err(Error::Syntax("expecting integer key".to_string()));

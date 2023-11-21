@@ -131,7 +131,11 @@ impl SwComponent {
                     SW_COMPONENT_VERSION => self.set_version(v)?,
                     SW_COMPONENT_SIGNER_ID => self.set_signer_id(v)?,
                     SW_COMPONENT_HASH_ALGO => self.set_hash_alg(v)?,
-                    x => return Err(Error::Syntax(format!("unknown key {x} in sw-components"))),
+                    unknown => {
+                        return Err(Error::Syntax(format!(
+                            "unknown key {unknown} in sw-components"
+                        )))
+                    }
                 }
             } else {
                 return Err(Error::Syntax(
@@ -296,13 +300,13 @@ impl Platform {
             return Err(Error::DuplicatedClaim("profile".to_string()));
         }
 
-        let x = to_tstr(v, "profile")?;
+        let p = to_tstr(v, "profile")?;
 
-        if x != PLATFORM_PROFILE {
-            return Err(Error::Sema(format!("unknown profile {}", x)));
+        if p != PLATFORM_PROFILE {
+            return Err(Error::Sema(format!("unknown profile {p}")));
         }
 
-        self.profile = x;
+        self.profile = p;
 
         self.claims_set.set(Claims::Profile);
 
@@ -382,13 +386,13 @@ impl Platform {
             return Err(Error::DuplicatedClaim("lifecycle".to_string()));
         }
 
-        let _lc: i128 = to_int(v, "lifecycle")?;
+        let lc: i128 = to_int(v, "lifecycle")?;
 
-        if !is_valid_lifecycle(_lc) {
-            return Err(Error::Sema(format!("unknown lifecycle {}", _lc)));
+        if !is_valid_lifecycle(lc) {
+            return Err(Error::Sema(format!("unknown lifecycle {lc}")));
         }
 
-        self.lifecycle = _lc as u16;
+        self.lifecycle = lc as u16;
 
         self.claims_set.set(Claims::Lifecycle);
 
