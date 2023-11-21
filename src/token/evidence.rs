@@ -55,39 +55,47 @@ impl CBORCollection {
     fn decode(buf: &Vec<u8>) -> Result<CBORCollection, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 
-        if !v.is_tag() {
-            return Err(Error::Syntax("expecting tag type".to_string()));
-        }
-
-        let (t, m) = v.as_tag().unwrap();
-        if t != CBOR_TAG {
-            return Err(Error::Syntax(format!(
-                "expecting tag {}, got {}",
-                CBOR_TAG, t
-            )));
-        }
-
-        if !m.is_map() {
-            return Err(Error::Syntax("expecting map type".to_string()));
-        }
-
         let mut collection = CBORCollection::new();
 
-        for (k, v) in m.as_map().unwrap().iter() {
-            if !k.is_integer() {
-                return Err(Error::Syntax("expecting integer key".to_string()));
+        if let Value::Tag(t, m) = v {
+            if t != CBOR_TAG {
+                return Err(Error::Syntax(format!(
+                    "expecting tag {}, got {}",
+                    CBOR_TAG, t
+                )));
             }
 
-            match k.as_integer().unwrap().into() {
-                PLATFORM_LABEL => collection.set_platform_token(v)?,
-                REALM_LABEL => collection.set_realm_token(v)?,
-                x => return Err(Error::Syntax(format!("unknown key {x} in collection"))),
+            if let Value::Map(contents) = *m {
+                collection.parse(contents)?;
+            } else {
+                return Err(Error::Syntax("expecting map type".to_string()));
             }
+        } else {
+            return Err(Error::Syntax("expecting tag type".to_string()));
         }
 
         collection.validate()?;
 
         Ok(collection)
+    }
+
+    fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    PLATFORM_LABEL => self.set_platform_token(v)?,
+                    REALM_LABEL => self.set_realm_token(v)?,
+                    unknown => {
+                        return Err(Error::Syntax(format!(
+                            "unknown key {unknown} in collection"
+                        )))
+                    }
+                }
+            } else {
+                return Err(Error::Syntax("expecting integer key".to_string()));
+            }
+        }
+        Ok(())
     }
 }
 

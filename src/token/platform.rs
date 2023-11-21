@@ -122,14 +122,41 @@ impl SwComponent {
         Ok(())
     }
 
+    fn parse(&mut self, contents: &[(Value, Value)]) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    SW_COMPONENT_MTYP => self.set_mtyp(v)?,
+                    SW_COMPONENT_MVAL => self.set_mval(v)?,
+                    SW_COMPONENT_VERSION => self.set_version(v)?,
+                    SW_COMPONENT_SIGNER_ID => self.set_signer_id(v)?,
+                    SW_COMPONENT_HASH_ALGO => self.set_hash_alg(v)?,
+                    unknown => {
+                        return Err(Error::Syntax(format!(
+                            "unknown key {unknown} in sw-components"
+                        )))
+                    }
+                }
+            } else {
+                return Err(Error::Syntax(
+                    "non-integer key in sw-components".to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     fn validate(&self) -> Result<(), Error> {
         // only mval and signer-id are mandatory
-        if !self.claims_set.contains(SwClaims::MVal) {
-            return Err(Error::MissingClaim("measurement-value".to_string()));
-        }
+        let mandatory_claims = [
+            (SwClaims::MVal, "measurement-value"),
+            (SwClaims::SignerID, "signer-id"),
+        ];
 
-        if !self.claims_set.contains(SwClaims::SignerID) {
-            return Err(Error::MissingClaim("signer-id".to_string()));
+        for (c, n) in mandatory_claims.iter() {
+            if !self.claims_set.contains(*c) {
+                return Err(Error::MissingClaim(n.to_string()));
+            }
         }
 
         // TODO: hash-type'd measurements are compatible with hash-alg
@@ -208,34 +235,12 @@ impl Platform {
     pub fn decode(buf: &Vec<u8>) -> Result<Platform, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 
-        if !v.is_map() {
-            return Err(Error::Syntax("expecting map type".to_string()));
-        }
-
         let mut pc: Platform = Default::default();
 
-        for i in v.as_map().unwrap().iter() {
-            let _k = i.0.as_integer();
-
-            // CCA does not define any text key
-            if _k.is_none() {
-                continue;
-            }
-
-            let k: i128 = _k.unwrap().into();
-
-            match k {
-                PLATFORM_PROFILE_LABEL => pc.set_profile(&i.1)?,
-                PLATFORM_CHALLENGE_LABEL => pc.set_challenge(&i.1)?,
-                PLATFORM_IMPL_ID_LABEL => pc.set_impl_id(&i.1)?,
-                PLATFORM_INST_ID_LABEL => pc.set_inst_id(&i.1)?,
-                PLATFORM_CONFIG_LABEL => pc.set_config(&i.1)?,
-                PLATFORM_LIFECYCLE_LABEL => pc.set_lifecycle(&i.1)?,
-                PLATFORM_SW_COMPONENTS => pc.set_sw_components(&i.1)?,
-                PLATFORM_VERIFICATION_SERVICE => pc.set_vsi(&i.1)?,
-                PLATFORM_HASH_ALG => pc.set_hash_alg(&i.1)?,
-                _ => continue,
-            }
+        if let Value::Map(contents) = v {
+            pc.parse(contents)?;
+        } else {
+            return Err(Error::Syntax("expecting map type".to_string()));
         }
 
         pc.validate()?;
@@ -243,9 +248,49 @@ impl Platform {
         Ok(pc)
     }
 
+    fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    PLATFORM_PROFILE_LABEL => self.set_profile(v)?,
+                    PLATFORM_CHALLENGE_LABEL => self.set_challenge(v)?,
+                    PLATFORM_IMPL_ID_LABEL => self.set_impl_id(v)?,
+                    PLATFORM_INST_ID_LABEL => self.set_inst_id(v)?,
+                    PLATFORM_CONFIG_LABEL => self.set_config(v)?,
+                    PLATFORM_LIFECYCLE_LABEL => self.set_lifecycle(v)?,
+                    PLATFORM_SW_COMPONENTS => self.set_sw_components(v)?,
+                    PLATFORM_VERIFICATION_SERVICE => self.set_vsi(v)?,
+                    PLATFORM_HASH_ALG => self.set_hash_alg(v)?,
+                    _ => continue,
+                }
+            } else {
+                // CCA does not define any non-integer key
+                continue;
+            }
+        }
+        Ok(())
+    }
+
     fn validate(&self) -> Result<(), Error> {
+        // all platform claims are mandatory except vsi
+        let mandatory_claims = [
+            (Claims::Profile, "profile"),
+            (Claims::Challenge, "challenge"),
+            (Claims::ImplID, "implementation-id"),
+            (Claims::InstID, "instance-id"),
+            (Claims::Config, "config"),
+            (Claims::Lifecycle, "lifecycle"),
+            (Claims::SwComponents, "sw-components"),
+            (Claims::HashAlg, "hash-algo"),
+        ];
+
+        for (c, n) in mandatory_claims.iter() {
+            if !self.claims_set.contains(*c) {
+                return Err(Error::MissingClaim(n.to_string()));
+            }
+        }
+
         // TODO:
-        // * all platform claims are mandatory except vsi
         // * hash-type'd measurements are compatible with hash-alg
         Ok(())
     }
@@ -255,13 +300,13 @@ impl Platform {
             return Err(Error::DuplicatedClaim("profile".to_string()));
         }
 
-        let x = to_tstr(v, "profile")?;
+        let p = to_tstr(v, "profile")?;
 
-        if x != PLATFORM_PROFILE {
-            return Err(Error::Sema(format!("unknown profile {}", x)));
+        if p != PLATFORM_PROFILE {
+            return Err(Error::Sema(format!("unknown profile {p}")));
         }
 
-        self.profile = x;
+        self.profile = p;
 
         self.claims_set.set(Claims::Profile);
 
@@ -341,13 +386,13 @@ impl Platform {
             return Err(Error::DuplicatedClaim("lifecycle".to_string()));
         }
 
-        let _lc: i128 = to_int(v, "lifecycle")?;
+        let lc: i128 = to_int(v, "lifecycle")?;
 
-        if !is_valid_lifecycle(_lc) {
-            return Err(Error::Sema(format!("unknown lifecycle {}", _lc)));
+        if !is_valid_lifecycle(lc) {
+            return Err(Error::Sema(format!("unknown lifecycle {lc}")));
         }
 
-        self.lifecycle = _lc as u16;
+        self.lifecycle = lc as u16;
 
         self.claims_set.set(Claims::Lifecycle);
 
@@ -388,24 +433,8 @@ impl Platform {
     fn set_sw_component(&mut self, swc: &Value) -> Result<(), Error> {
         let mut v: SwComponent = Default::default();
 
-        for i in swc.as_map().unwrap().iter() {
-            let _k = i.0.as_integer();
-
-            // CCA does not define any text key
-            if _k.is_none() {
-                continue;
-            }
-
-            let k: i128 = _k.unwrap().into();
-
-            match k {
-                SW_COMPONENT_MTYP => v.set_mtyp(&i.1)?,
-                SW_COMPONENT_MVAL => v.set_mval(&i.1)?,
-                SW_COMPONENT_VERSION => v.set_version(&i.1)?,
-                SW_COMPONENT_SIGNER_ID => v.set_signer_id(&i.1)?,
-                SW_COMPONENT_HASH_ALGO => v.set_hash_alg(&i.1)?,
-                _ => continue,
-            }
+        if let Value::Map(contents) = swc {
+            v.parse(contents)?;
         }
 
         v.validate()?;

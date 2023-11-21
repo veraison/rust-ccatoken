@@ -68,34 +68,12 @@ impl Realm {
     pub fn decode(buf: &Vec<u8>) -> Result<Realm, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 
-        if !v.is_map() {
-            return Err(Error::Syntax("expecting map type".to_string()));
-        }
-
         let mut rc: Realm = Default::default();
 
-        // Process key/val pairs in the CBOR map
-        // Note that EAT wants us to ignore unknown claims
-        for i in v.as_map().unwrap().iter() {
-            let _k = i.0.as_integer();
-
-            // CCA does not define any text key
-            if _k.is_none() {
-                continue;
-            }
-
-            let k: i128 = _k.unwrap().into();
-
-            match k {
-                REALM_CHALLENGE_LABEL => rc.set_challenge(&i.1)?,
-                REALM_PERSO_LABEL => rc.set_perso(&i.1)?,
-                REALM_RIM_LABEL => rc.set_rim(&i.1)?,
-                REALM_REM_LABEL => rc.set_rem(&i.1)?,
-                REALM_HASH_ALG_LABEL => rc.set_hash_alg(&i.1)?,
-                REALM_RAK_LABEL => rc.set_rak(&i.1)?,
-                REALM_RAK_HASH_ALG_LABEL => rc.set_rak_hash_alg(&i.1)?,
-                _ => continue,
-            }
+        if let Value::Map(contents) = v {
+            rc.parse(contents)?;
+        } else {
+            return Err(Error::TypeMismatch("expecting map type".to_string()));
         }
 
         rc.validate()?;
@@ -103,10 +81,43 @@ impl Realm {
         Ok(rc)
     }
 
+    fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    REALM_CHALLENGE_LABEL => self.set_challenge(v)?,
+                    REALM_PERSO_LABEL => self.set_perso(v)?,
+                    REALM_RIM_LABEL => self.set_rim(v)?,
+                    REALM_REM_LABEL => self.set_rem(v)?,
+                    REALM_HASH_ALG_LABEL => self.set_hash_alg(v)?,
+                    REALM_RAK_LABEL => self.set_rak(v)?,
+                    REALM_RAK_HASH_ALG_LABEL => self.set_rak_hash_alg(v)?,
+                    _ => continue,
+                }
+            } else {
+                // CCA does not define any non-integer key
+                continue;
+            }
+        }
+        Ok(())
+    }
+
     fn validate(&self) -> Result<(), Error> {
         // all realm claims are mandatory
-        if !self.claims_set.is_all() {
-            return Err(Error::MissingClaim("todo".to_string()));
+        let mandatory_claims = [
+            (Claims::Challenge, "challenge"),
+            (Claims::Perso, "personalization-value"),
+            (Claims::Rim, "initial-measurement"),
+            (Claims::Rem, "extensible-measurements"),
+            (Claims::HashAlg, "hash-algo-id"),
+            (Claims::Rak, "public-key"),
+            (Claims::RakHashAlg, "public-key-hash-algo-id"),
+        ];
+
+        for (c, n) in mandatory_claims.iter() {
+            if !self.claims_set.contains(*c) {
+                return Err(Error::MissingClaim(n.to_string()));
+            }
         }
 
         // TODO: hash-type'd measurements are compatible with hash-alg
@@ -130,8 +141,7 @@ impl Realm {
 
         if x_len != 64 {
             return Err(Error::Sema(format!(
-                "nonce: expecting 64 bytes, got {}",
-                x_len
+                "challenge: expecting 64 bytes, got {x_len}"
             )));
         }
 

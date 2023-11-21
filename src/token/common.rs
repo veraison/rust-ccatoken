@@ -41,7 +41,7 @@ pub fn to_tstr(v: &Value, n: &str) -> Result<String, Error> {
     let x = v.as_text();
 
     if x.is_none() {
-        return Err(Error::TypeMismatch(format!("{} MUST be tstr", n)));
+        return Err(Error::TypeMismatch(format!("{n} MUST be tstr")));
     }
 
     Ok(x.unwrap().to_string())
@@ -51,7 +51,7 @@ pub fn to_bstr(v: &Value, n: &str) -> Result<Vec<u8>, Error> {
     let x = v.as_bytes();
 
     if x.is_none() {
-        return Err(Error::TypeMismatch(format!("{} MUST be bstr", n)));
+        return Err(Error::TypeMismatch(format!("{n} MUST be bstr")));
     }
 
     Ok(x.unwrap().clone())
@@ -61,7 +61,7 @@ pub fn to_int(v: &Value, n: &str) -> Result<i128, Error> {
     let x = v.as_integer();
 
     if x.is_none() {
-        return Err(Error::TypeMismatch(format!("{} MUST be int", n)));
+        return Err(Error::TypeMismatch(format!("{n} MUST be int")));
     }
 
     Ok(x.unwrap().into())
@@ -72,8 +72,7 @@ pub fn to_measurement(v: &Value, n: &str) -> Result<Vec<u8>, Error> {
 
     if !is_valid_measurement(&x) {
         return Err(Error::Sema(format!(
-            "{}: expecting 32, 48 or 64 bytes, got {}",
-            n,
+            "{n}: expecting 32, 48 or 64 bytes, got {}",
             x.len()
         )));
     }
@@ -85,7 +84,7 @@ pub fn to_hash_alg(v: &Value, n: &str) -> Result<String, Error> {
     let x = to_tstr(v, n)?;
 
     if !is_valid_hash(&x) {
-        return Err(Error::Sema(format!("unknown {} {}", n, x)));
+        return Err(Error::Sema(format!("unknown {n} {x}")));
     }
 
     Ok(x)
