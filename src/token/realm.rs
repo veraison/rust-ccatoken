@@ -73,7 +73,7 @@ impl Realm {
         if let Value::Map(contents) = v {
             rc.parse(contents)?;
         } else {
-            return Err(Error::Syntax("expecting map type".to_string()));
+            return Err(Error::TypeMismatch("expecting map type".to_string()));
         }
 
         rc.validate()?;

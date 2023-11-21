@@ -122,14 +122,37 @@ impl SwComponent {
         Ok(())
     }
 
+    fn parse(&mut self, contents: &[(Value, Value)]) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    SW_COMPONENT_MTYP => self.set_mtyp(v)?,
+                    SW_COMPONENT_MVAL => self.set_mval(v)?,
+                    SW_COMPONENT_VERSION => self.set_version(v)?,
+                    SW_COMPONENT_SIGNER_ID => self.set_signer_id(v)?,
+                    SW_COMPONENT_HASH_ALGO => self.set_hash_alg(v)?,
+                    x => return Err(Error::Syntax(format!("unknown key {x} in sw-components"))),
+                }
+            } else {
+                return Err(Error::Syntax(
+                    "non-integer key in sw-components".to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     fn validate(&self) -> Result<(), Error> {
         // only mval and signer-id are mandatory
-        if !self.claims_set.contains(SwClaims::MVal) {
-            return Err(Error::MissingClaim("measurement-value".to_string()));
-        }
+        let mandatory_claims = [
+            (SwClaims::MVal, "measurement-value"),
+            (SwClaims::SignerID, "signer-id"),
+        ];
 
-        if !self.claims_set.contains(SwClaims::SignerID) {
-            return Err(Error::MissingClaim("signer-id".to_string()));
+        for (c, n) in mandatory_claims.iter() {
+            if !self.claims_set.contains(*c) {
+                return Err(Error::MissingClaim(n.to_string()));
+            }
         }
 
         // TODO: hash-type'd measurements are compatible with hash-alg
@@ -406,24 +429,8 @@ impl Platform {
     fn set_sw_component(&mut self, swc: &Value) -> Result<(), Error> {
         let mut v: SwComponent = Default::default();
 
-        for i in swc.as_map().unwrap().iter() {
-            let _k = i.0.as_integer();
-
-            // CCA does not define any text key
-            if _k.is_none() {
-                continue;
-            }
-
-            let k: i128 = _k.unwrap().into();
-
-            match k {
-                SW_COMPONENT_MTYP => v.set_mtyp(&i.1)?,
-                SW_COMPONENT_MVAL => v.set_mval(&i.1)?,
-                SW_COMPONENT_VERSION => v.set_version(&i.1)?,
-                SW_COMPONENT_SIGNER_ID => v.set_signer_id(&i.1)?,
-                SW_COMPONENT_HASH_ALGO => v.set_hash_alg(&i.1)?,
-                _ => continue,
-            }
+        if let Value::Map(contents) = swc {
+            v.parse(contents)?;
         }
 
         v.validate()?;
