@@ -68,35 +68,38 @@ impl Realm {
     pub fn decode(buf: &Vec<u8>) -> Result<Realm, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 
-        if !v.is_map() {
-            return Err(Error::Syntax("expecting map type".to_string()));
-        }
-
         let mut rc: Realm = Default::default();
 
-        // Process key/val pairs in the CBOR map
-        // Note that EAT wants us to ignore unknown claims
-        for (k, v) in v.as_map().unwrap().iter() {
-            if !k.is_integer() {
-                // CCA does not define any non-integer key
-                continue;
-            }
-
-            match k.as_integer().unwrap().into() {
-                REALM_CHALLENGE_LABEL => rc.set_challenge(v)?,
-                REALM_PERSO_LABEL => rc.set_perso(v)?,
-                REALM_RIM_LABEL => rc.set_rim(v)?,
-                REALM_REM_LABEL => rc.set_rem(v)?,
-                REALM_HASH_ALG_LABEL => rc.set_hash_alg(v)?,
-                REALM_RAK_LABEL => rc.set_rak(v)?,
-                REALM_RAK_HASH_ALG_LABEL => rc.set_rak_hash_alg(v)?,
-                _ => continue,
-            }
+        if let Value::Map(contents) = v {
+            rc.parse(contents)?;
+        } else {
+            return Err(Error::Syntax("expecting map type".to_string()));
         }
 
         rc.validate()?;
 
         Ok(rc)
+    }
+
+    fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    REALM_CHALLENGE_LABEL => self.set_challenge(v)?,
+                    REALM_PERSO_LABEL => self.set_perso(v)?,
+                    REALM_RIM_LABEL => self.set_rim(v)?,
+                    REALM_REM_LABEL => self.set_rem(v)?,
+                    REALM_HASH_ALG_LABEL => self.set_hash_alg(v)?,
+                    REALM_RAK_LABEL => self.set_rak(v)?,
+                    REALM_RAK_HASH_ALG_LABEL => self.set_rak_hash_alg(v)?,
+                    _ => continue,
+                }
+            } else {
+                // CCA does not define any non-integer key
+                continue;
+            }
+        }
+        Ok(())
     }
 
     fn validate(&self) -> Result<(), Error> {

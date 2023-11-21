@@ -208,35 +208,40 @@ impl Platform {
     pub fn decode(buf: &Vec<u8>) -> Result<Platform, Error> {
         let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
 
-        if !v.is_map() {
-            return Err(Error::Syntax("expecting map type".to_string()));
-        }
-
         let mut pc: Platform = Default::default();
 
-        for (k, v) in v.as_map().unwrap().iter() {
-            if !k.is_integer() {
-                // CCA does not define any non-integer key
-                continue;
-            }
-
-            match k.as_integer().unwrap().into() {
-                PLATFORM_PROFILE_LABEL => pc.set_profile(v)?,
-                PLATFORM_CHALLENGE_LABEL => pc.set_challenge(v)?,
-                PLATFORM_IMPL_ID_LABEL => pc.set_impl_id(v)?,
-                PLATFORM_INST_ID_LABEL => pc.set_inst_id(v)?,
-                PLATFORM_CONFIG_LABEL => pc.set_config(v)?,
-                PLATFORM_LIFECYCLE_LABEL => pc.set_lifecycle(v)?,
-                PLATFORM_SW_COMPONENTS => pc.set_sw_components(v)?,
-                PLATFORM_VERIFICATION_SERVICE => pc.set_vsi(v)?,
-                PLATFORM_HASH_ALG => pc.set_hash_alg(v)?,
-                _ => continue,
-            }
+        if let Value::Map(contents) = v {
+            pc.parse(contents)?;
+        } else {
+            return Err(Error::Syntax("expecting map type".to_string()));
         }
 
         pc.validate()?;
 
         Ok(pc)
+    }
+
+    fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    PLATFORM_PROFILE_LABEL => self.set_profile(v)?,
+                    PLATFORM_CHALLENGE_LABEL => self.set_challenge(v)?,
+                    PLATFORM_IMPL_ID_LABEL => self.set_impl_id(v)?,
+                    PLATFORM_INST_ID_LABEL => self.set_inst_id(v)?,
+                    PLATFORM_CONFIG_LABEL => self.set_config(v)?,
+                    PLATFORM_LIFECYCLE_LABEL => self.set_lifecycle(v)?,
+                    PLATFORM_SW_COMPONENTS => self.set_sw_components(v)?,
+                    PLATFORM_VERIFICATION_SERVICE => self.set_vsi(v)?,
+                    PLATFORM_HASH_ALG => self.set_hash_alg(v)?,
+                    _ => continue,
+                }
+            } else {
+                // CCA does not define any non-integer key
+                continue;
+            }
+        }
+        Ok(())
     }
 
     fn validate(&self) -> Result<(), Error> {
