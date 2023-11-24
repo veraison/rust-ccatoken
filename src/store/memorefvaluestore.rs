@@ -85,7 +85,7 @@ impl IRefValueStore for MemoRefValueStore {
     }
 
     /// Lookup all realm reference values matching the given RIM
-    fn lookup_realm(&self, rim: &Vec<u8>) -> Option<Vec<RealmRefValue>> {
+    fn lookup_realm(&self, rim: &[u8]) -> Option<Vec<RealmRefValue>> {
         return self.r.read().unwrap().get_vec(rim).cloned();
     }
 }
@@ -144,7 +144,7 @@ mod tests {
         assert!(swcomp.version.is_some());
         assert_eq!(swcomp.version.as_ref().unwrap(), "1.0.2rc5");
 
-        let rrv = s.lookup_realm(&TEST_RIM_UNKNOWN.into());
+        let rrv = s.lookup_realm(&TEST_RIM_UNKNOWN);
         assert!(rrv.is_none());
     }
 }

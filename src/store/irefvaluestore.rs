@@ -9,5 +9,5 @@ pub trait IRefValueStore {
     fn lookup_platform(&self, impl_id: &[u8; 32]) -> Option<Vec<PlatformRefValue>>;
 
     /// Lookup all realm reference values matching the given RIM
-    fn lookup_realm(&self, rim: &Vec<u8>) -> Option<Vec<RealmRefValue>>;
+    fn lookup_realm(&self, rim: &[u8]) -> Option<Vec<RealmRefValue>>;
 }
