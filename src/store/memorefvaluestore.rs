@@ -1,89 +1,14 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
+use super::platformrefvalue::PlatformRefValue;
+use super::realmrefvalue::RealmRefValue;
+use super::IRefValueStore;
 use hex_literal::hex;
 use multimap::MultiMap;
 use serde::Deserialize;
 use serde_json::Error;
 use std::sync::RwLock;
-
-/// CCA measured firmware component descriptor
-#[serde_with::serde_as]
-#[derive(Clone, Deserialize, Debug)]
-pub struct SWComponent {
-    /// The measurement value
-    #[serde(rename(deserialize = "measurement-value"))]
-    #[serde_as(as = "serde_with::hex::Hex")]
-    mval: Vec<u8>,
-
-    /// The identifier of the ROTPK that signs the firmware image
-    #[serde(rename(deserialize = "signer-id"))]
-    #[serde_as(as = "serde_with::hex::Hex")]
-    signer_id: Vec<u8>,
-
-    /// (Optional) versionining information of the firmare release, e.g., using
-    /// SemVer
-    #[serde(rename(deserialize = "version"))]
-    version: Option<String>,
-
-    /// (Optional) human readable label describing the firwmare, e.g., "TF-A"
-    #[serde(rename(deserialize = "component-type"))]
-    mtyp: Option<String>,
-}
-
-/// A CCA platform reference value set, comprising all the firmware components
-/// and platform configuration.  It describes an acceptable state for a certain
-/// platform, identified by its implementation identifier.  There may be
-/// multiple platform-rv records for the same platform at any point in time,
-/// each describing one possible "good" state.
-#[serde_with::serde_as]
-#[derive(Clone, Deserialize, Debug)]
-pub struct PlatformRefValue {
-    /// The platform's implementation identifier
-    #[serde(rename(deserialize = "implementation-id"))]
-    #[serde_as(as = "serde_with::hex::Hex")]
-    impl_id: [u8; 32],
-
-    /// The TCB firmare components
-    #[serde(rename(deserialize = "sw-components"))]
-    sw_components: Vec<SWComponent>,
-
-    /// The CCA platform config contains the System Properties field which is
-    /// present in the Root NVS public parameters
-    #[serde(rename(deserialize = "platform-configuration"))]
-    #[serde_as(as = "serde_with::hex::Hex")]
-    config: Vec<u8>,
-}
-
-/// A realm reference value set, including RIM, REM and the personalisation
-/// value.  It describes an acceptable state for a given realm / CC workload.
-/// There may be multiple such records for the same realm, each describing one
-/// possible "good" state associated to the realm.
-#[serde_with::serde_as]
-#[derive(Clone, Deserialize, Debug)]
-pub struct RealmRefValue {
-    /// The value of the Realm Initial Measurement
-    #[serde(rename(deserialize = "initial-measurement"))]
-    #[serde_as(as = "serde_with::hex::Hex")]
-    rim: Vec<u8>,
-
-    /// The Realm hash algorithm ID claim identifies the algorithm used to
-    /// calculate all hash values which are present in the Realm token.  It is
-    /// encoded as a human readable string with values from the IANA Hash
-    /// Function Textual Names registry.  See:
-    /// https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
-    #[serde(rename(deserialize = "rak-hash-algorithm"))]
-    rak_hash_alg: String,
-
-    /// The Realm Extensible Measurements values
-    #[serde(rename(deserialize = "extensible-measurements"))]
-    rem: Option<Vec<String>>,
-
-    /// The Realm Personalization Value contains the RPV which was provided at
-    /// Realm creation
-    #[serde(rename(deserialize = "personalization-value"))]
-    perso: Option<String>,
-}
 
 /// JSON format for CCA reference values (both platform and realm).
 #[derive(Deserialize, Debug)]
@@ -106,7 +31,7 @@ impl RefValues {
 
 /// The store where platform and realm reference values are stashed
 #[derive(Debug)]
-pub struct RefValueStore {
+pub struct MemoRefValueStore {
     /// platform reference values, indexed by implementation-id
     p: RwLock<MultiMap<[u8; 32], PlatformRefValue>>,
 
@@ -114,13 +39,13 @@ pub struct RefValueStore {
     r: RwLock<MultiMap<Vec<u8>, RealmRefValue>>,
 }
 
-impl Default for RefValueStore {
+impl Default for MemoRefValueStore {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RefValueStore {
+impl MemoRefValueStore {
     pub fn new() -> Self {
         Self {
             p: Default::default(),
@@ -151,14 +76,16 @@ impl RefValueStore {
 
         Ok(())
     }
+}
 
+impl IRefValueStore for MemoRefValueStore {
     /// Lookup all platform reference values matching the given implementation identifier
-    pub fn lookup_platform(&self, impl_id: &[u8; 32]) -> Option<Vec<PlatformRefValue>> {
+    fn lookup_platform(&self, impl_id: &[u8; 32]) -> Option<Vec<PlatformRefValue>> {
         return self.p.read().unwrap().get_vec(impl_id).cloned();
     }
 
     /// Lookup all realm reference values matching the given RIM
-    pub fn lookup_realm(&self, rim: &Vec<u8>) -> Option<Vec<RealmRefValue>> {
+    fn lookup_realm(&self, rim: &Vec<u8>) -> Option<Vec<RealmRefValue>> {
         return self.r.read().unwrap().get_vec(rim).cloned();
     }
 }
@@ -192,7 +119,7 @@ mod tests {
 
     #[test]
     fn load_json_and_lookup_ok() {
-        let mut s = RefValueStore::new();
+        let mut s = MemoRefValueStore::new();
 
         // load store from JSON
         s.load_json(TEST_JSON_RV_OK_0).unwrap();

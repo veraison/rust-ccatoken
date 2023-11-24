@@ -1,81 +1,138 @@
-start = rv-store / ta-store
+; start = platform-ta-kvstore
+;    / platform-rv-kvstore
+;    / realm-rv-kvstore
 
-; common types
-hash-type = bytes .size 32 / bytes .size 48 / bytes .size 64
-impl-id-type = bytes .size 32
-inst-id-type = bytes .size 33
-perso-type = bytes .size 64
-rim-type = hash-type
-pem-type = text
-label = int / tstr
-values = any
+start = realm-rv
 
-; sw components
-swcomp = {
-    ? &(type: 1) => text
-    &(value: 2) => hash-type
-    ? &(version: 4) => text 
-    &(signer: 5) => hash-type
-}
+; common hex-encoded byte string formats
+hexbytes-4  = text .regexp "([0-9a-f]{2}){4}"
+hexbytes-32 = text .regexp "([0-9a-f]{2}){32}"
+hexbytes-48 = text .regexp "([0-9a-f]{2}){48}"
+hexbytes-64 = text .regexp "([0-9a-f]{2}){64}"
+
+impl-id-type = hexbytes-32
+
+; EAT UEID type RAND (0x01)
+inst-id-type = text .regexp "01([0-9a-f]{2}){32}"
+
+;measurement-type = hexbytes-32 / hexbytes-48 / hexbytes-64
+measurement-type = hexbytes-32
+
+config-type = hexbytes-4
+
+x-reason-type = "insecure" / "revoked" / "obsolete"
+
+; see https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
+hash-algo-id-type = "md2"
+    / "md5"
+    / "sha-1"
+    / "sha-224"
+    / "sha-256"
+    / "sha-384"
+    / "sha-512"
+    / "shake128"
+    / "shake256"
+
+perso-type = hexbytes-64
+
+rim-type = measurement-type
 
 ; a platform ref-val, including fw measurements and platform config.
 ; it describes an acceptable state for a certain platform, identified by impl-id.
 ; there may be multiple platform-rv records for the same platform at any point in
 ; time, each describing one possible "good" state.
 platform-rv = {
-    &(impl-id: 2396) => impl-id-type
-    &(swcomps: 2399) => [ + swcomp ]
-    &(config: 2401) => bytes
+    platform-claims
+}
+ 
+platform-claims = (
+    "implementation-id" => impl-id-type
+    "platform-configuration" => config-type
+    "sw-components" => [ + swcomp ]
+)
+ 
+; sw components
+swcomp = {
+    ? "component-type" => text
+    "measurement-value" => measurement-type
+    ? "version" => text 
+    "signer-id" => measurement-type
+    ? "hash-algo-id" => hash-algo-id-type
+}
+
+x-platform-rv = {
+    platform-claims
+    "x-reason" => x-reason-type
 }
 
 ; a realm ref-val, including rim, rem and personalisation value
 ; it describes an acceptable state for a given realm / CC workload.
 ; there may be multiple realm-rv records for the same realm
+realm-claims = (
+    "initial-measurement" => measurement-type
+    ? "extensible-measurements" => [ 4*4 measurement-type ]
+    ? "personalization-value" => perso-type
+    "rak-hash-algorithm" => hash-algo-id-type
+)
+
 realm-rv = {
-    &(rim: 44238) => hash-type
-    ? &(rem: 44239) => [ 4*4 hash-type ]
-    ? &(perso: 44235) => perso-type
-    ; https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
-    &(rak-hash-algo: 44236) => text
+    realm-claims
 }
 
-; CCA reference values input format (JSON)
-refvalues = {
-    ? "platform" => [ + platform-rv ]
-    ? "realm" => [ + realm-rv ]
+x-realm-rv = {
+    realm-claims
+    "x-reason" => x-reason-type
 }
+
+; CPAK endorsement
+cpak-claims = (
+    "instance-id" => inst-id-type
+    "implementation-id" => impl-id-type
+    "pkey" => example-jwk
+)
 
 cpak = {
-    &(inst-id: 265) => inst-id-type
-    &(impl-id: 2396) => impl-id-type
-    &(pkey: -1) => COSE-Key
+    cpak-claims
 }
 
-tas = [ + cpak ]
-
-COSE_Key = {
-    &(kty: 1) => tstr / int
-    ? &(kid: 2) => bstr
-    ? &(alg: 3) => tstr / int
-    ? &(key_ops: 4) => [+ (tstr / int) ]
-    ? &(base_iv: 5) => bstr
-    * label => values
+example-jwk = {
+    "kty" => "EC",
+    "crv" => "P-256",
+    "x" => "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
+    "y" => "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM"
 }
 
-; lookup tables
-rv-store = {
-    ; platform rvs, indexed by impl-id
-    ? &(platform: 0) => {
+x-cpak = {
+    cpak-claims
+    "x-reason" => x-reason-type
+}
+
+; the following k-v stores are only examples: the way the core types are
+; organised is an implementation detail.
+
+platform-rv-kvstore = {
+    ? "accept-list" => {
         + impl-id-type => [ + platform-rv ]
-    }
-    ; realm rvs, indexed by rim
-    ? &(realm: 1) => {
+    },
+    ? "deny-list" => {
+        + impl-id-type => [ + x-platform-rv ]
+    },
+}
+
+realm-rv-kvstore = {
+    ? "accept-list" => {
         + rim-type => [ + realm-rv ]
+    },
+    ? "deny-list" => {
+        + rim-type => [ + x-realm-rv ]
     }
 }
 
-ta-store = {
-    + inst-id-type => [ + cpak ]
+platform-ta-kvstore = {
+    ? "accept-list" => {
+        + inst-id-type => cpak
+    },
+    ? "deny-list" => {
+        + inst-id-type => x-cpak
+    }
 }
-
-; lifecycle-secured-range = 12288...12543
