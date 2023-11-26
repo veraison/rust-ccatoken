@@ -6,7 +6,6 @@ use super::errors::Error;
 use bitmask::*;
 use ciborium::de::from_reader;
 use ciborium::Value;
-use hex_literal::hex;
 
 const REALM_CHALLENGE_LABEL: i128 = 10;
 const REALM_PERSO_LABEL: i128 = 44235;
@@ -284,6 +283,7 @@ impl Realm {
 
 mod tests {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn realm_ok() {
