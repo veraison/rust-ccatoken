@@ -308,12 +308,12 @@ mod tests {
         println!("RTV = {:?}", e.realm_tvec);
     }
 
-    // platform-specific tests
+    // TODO platform-specific tests
     // - unknown impl-id
     // - non-matching ref-vals
     // - bad security state?
 
-    // realm tests
+    // TODO realm tests
     // - unknown rim
     // - non-matching rem
     // - non-matching personalisation value

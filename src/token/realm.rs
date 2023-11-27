@@ -285,100 +285,34 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
+    const TEST_REALM_CLAIMS_OK: &[u8; 438] = include_bytes!("../../testdata/realm-claims.cbor");
+    const TEST_REALM_CLAIMS_BAD_EXTRA_NUMERIC_KEY: &[u8; 457] =
+        include_bytes!("../../testdata/realm-claims+spurious-numeric-key.cbor");
+    const TEST_REALM_CLAIMS_BAD_EXTRA_TEXT_KEY: &[u8; 464] =
+        include_bytes!("../../testdata/realm-claims+spurious-text-key.cbor");
+    const TEST_REALM_CLAIMS_BAD_MISSING_NONCE: &[u8; 371] =
+        include_bytes!("../../testdata/realm-claims-missing-challenge.cbor");
+
     #[test]
     fn realm_ok() {
-        let buf = hex!(
-            "a70a5840abababababababababababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "abababababababab19accb5840ababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "ababababababababababababababababab19acce58200000000000000000"
-            "00000000000000000000000000000000000000000000000019accf845820"
-            "000000000000000000000000000000000000000000000000000000000000"
-            "000058200000000000000000000000000000000000000000000000000000"
-            "000000000000582000000000000000000000000000000000000000000000"
-            "000000000000000000005820000000000000000000000000000000000000"
-            "000000000000000000000000000019accc677368612d32353619accd5861"
-            "0476f988091be585ed41801aecfab858548c63057e16b0e676120bbd0d2f"
-            "9c29e056c5d41a0130eb9c21517899dc23146b28e1b062bd3ea4b315fd21"
-            "9f1cbb528cb6e74ca49be16773734f61a1ca61031b2bbf3d918f2f94ffc4"
-            "228e50919544ae19acd0677368612d323536"
-        )
-        .to_vec();
-
-        let _r = Realm::decode(&buf).unwrap();
+        let _r = Realm::decode(&TEST_REALM_CLAIMS_OK.to_vec()).expect("successful decode");
     }
 
     #[test]
     fn realm_good_with_extra_claim_using_numeric_key() {
-        let buf = hex!(
-            "a80a5840abababababababababababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "abababababababab19accb5840ababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "ababababababababababababababababab19acce58200000000000000000"
-            "00000000000000000000000000000000000000000000000019accf845820"
-            "000000000000000000000000000000000000000000000000000000000000"
-            "000058200000000000000000000000000000000000000000000000000000"
-            "000000000000582000000000000000000000000000000000000000000000"
-            "000000000000000000005820000000000000000000000000000000000000"
-            "000000000000000000000000000019accc677368612d32353619accd5861"
-            "0476f988091be585ed41801aecfab858548c63057e16b0e676120bbd0d2f"
-            "9c29e056c5d41a0130eb9c21517899dc23146b28e1b062bd3ea4b315fd21"
-            "9f1cbb528cb6e74ca49be16773734f61a1ca61031b2bbf3d918f2f94ffc4"
-            "228e50919544ae19acd0677368612d3235361a0012d6876d756e6b6e6f77"
-            "6e2d636c61696d"
-        )
-        .to_vec();
-
-        let _r = Realm::decode(&buf).unwrap();
+        let _r = Realm::decode(&TEST_REALM_CLAIMS_BAD_EXTRA_NUMERIC_KEY.to_vec())
+            .expect("successful decode");
     }
 
     #[test]
     fn realm_good_with_extra_claim_using_text_key() {
-        let buf = hex!(
-            "a80a5840abababababababababababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "abababababababab19accb5840ababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "ababababababababababababababababab19acce58200000000000000000"
-            "00000000000000000000000000000000000000000000000019accf845820"
-            "000000000000000000000000000000000000000000000000000000000000"
-            "000058200000000000000000000000000000000000000000000000000000"
-            "000000000000582000000000000000000000000000000000000000000000"
-            "000000000000000000005820000000000000000000000000000000000000"
-            "000000000000000000000000000019accc677368612d32353619accd5861"
-            "0476f988091be585ed41801aecfab858548c63057e16b0e676120bbd0d2f"
-            "9c29e056c5d41a0130eb9c21517899dc23146b28e1b062bd3ea4b315fd21"
-            "9f1cbb528cb6e74ca49be16773734f61a1ca61031b2bbf3d918f2f94ffc4"
-            "228e50919544ae19acd0677368612d3235366b756e6b6e6f776e2d6b6579"
-            "6d756e6b6e6f776e2d636c61696d"
-        )
-        .to_vec();
-
-        let _r = Realm::decode(&buf).unwrap();
+        let _r = Realm::decode(&TEST_REALM_CLAIMS_BAD_EXTRA_TEXT_KEY.to_vec())
+            .expect("successful decode");
     }
 
     #[test]
     fn realm_bad_missing_mandatory_claim() {
-        let buf = hex!(
-            "a619accb5840abababababababababababababababababababababababab"
-            "abababababababababababababababababababababababababababababab"
-            "abababababababababab19acce5820000000000000000000000000000000"
-            "000000000000000000000000000000000019accf84582000000000000000"
-            "000000000000000000000000000000000000000000000000005820000000"
-            "000000000000000000000000000000000000000000000000000000000058"
-            "200000000000000000000000000000000000000000000000000000000000"
-            "000000582000000000000000000000000000000000000000000000000000"
-            "0000000000000019accc677368612d32353619accd58610476f988091be5"
-            "85ed41801aecfab858548c63057e16b0e676120bbd0d2f9c29e056c5d41a"
-            "0130eb9c21517899dc23146b28e1b062bd3ea4b315fd219f1cbb528cb6e7"
-            "4ca49be16773734f61a1ca61031b2bbf3d918f2f94ffc4228e50919544ae"
-            "19acd0677368612d323536"
-        )
-        .to_vec();
-
-        assert!(Realm::decode(&buf).is_err());
+        assert!(Realm::decode(&TEST_REALM_CLAIMS_BAD_MISSING_NONCE.to_vec()).is_err());
     }
 
     #[test]
