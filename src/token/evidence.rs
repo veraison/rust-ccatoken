@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::store::IRefValueStore;
-use crate::store::MemoRefValueStore;
 use crate::store::PlatformRefValue;
 use crate::store::RealmRefValue;
 
@@ -109,9 +108,9 @@ impl CBORCollection {
 /// This structure collects all the structural aspects of the CCA token
 pub struct Evidence {
     /// decoded platform claims-set
-    platform_claims: Platform,
+    pub platform_claims: Platform,
     /// decoded realm claims-set
-    realm_claims: Realm,
+    pub realm_claims: Realm,
     /// COSE Sign1 envelope for the platform claims-set
     platform: CoseMessage,
     /// COSE Sign1 envelope for the realm claims-set
@@ -277,10 +276,15 @@ impl Evidence {
 
         Ok(())
     }
+
+    pub fn get_trust_vectors(&self) -> (TrustVector, TrustVector) {
+        (self.platform_tvec, self.realm_tvec)
+    }
 }
 
 mod tests {
     use super::*;
+    use crate::store::MemoRefValueStore;
 
     const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
