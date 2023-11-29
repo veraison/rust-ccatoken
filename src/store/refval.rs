@@ -1,6 +1,7 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::token;
 use hex_literal::hex;
 use multimap::MultiMap;
 use serde::Deserialize;
@@ -9,7 +10,7 @@ use std::sync::RwLock;
 
 /// CCA measured firmware component descriptor
 #[serde_with::serde_as]
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, PartialEq)]
 pub struct SWComponent {
     /// The measurement value
     #[serde(rename(deserialize = "measurement-value"))]
@@ -31,6 +32,30 @@ pub struct SWComponent {
     mtyp: Option<String>,
 }
 
+impl PartialEq<token::SwComponent> for SWComponent {
+    fn eq(&self, other: &token::SwComponent) -> bool {
+        if self.mval != other.mval {
+            return false;
+        }
+
+        if self.signer_id != other.signer_id {
+            return false;
+        }
+
+        if self.mtyp.is_some() && (other.mtyp.is_none() || Some(&self.mtyp) != Some(&other.mtyp)) {
+            return false;
+        }
+
+        if self.version.is_some()
+            && (other.version.is_none() || Some(&self.version) != Some(&other.version))
+        {
+            return false;
+        }
+
+        true
+    }
+}
+
 /// A CCA platform reference value set, comprising all the firmware components
 /// and platform configuration.  It describes an acceptable state for a certain
 /// platform, identified by its implementation identifier.  There may be
@@ -46,13 +71,13 @@ pub struct PlatformRefValue {
 
     /// The TCB firmare components
     #[serde(rename(deserialize = "sw-components"))]
-    sw_components: Vec<SWComponent>,
+    pub sw_components: Vec<SWComponent>,
 
     /// The CCA platform config contains the System Properties field which is
     /// present in the Root NVS public parameters
     #[serde(rename(deserialize = "platform-configuration"))]
     #[serde_as(as = "serde_with::hex::Hex")]
-    config: Vec<u8>,
+    pub config: Vec<u8>,
 }
 
 /// A realm reference value set, including RIM, REM and the personalisation
@@ -73,16 +98,31 @@ pub struct RealmRefValue {
     /// Function Textual Names registry.  See:
     /// https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
     #[serde(rename(deserialize = "rak-hash-algorithm"))]
-    rak_hash_alg: String,
+    pub rak_hash_alg: String,
 
     /// The Realm Extensible Measurements values
     #[serde(rename(deserialize = "extensible-measurements"))]
-    rem: Option<Vec<String>>,
+    pub rem: [RemEntry; 4],
 
     /// The Realm Personalization Value contains the RPV which was provided at
     /// Realm creation
     #[serde(rename(deserialize = "personalization-value"))]
-    perso: Option<String>,
+    #[serde_as(as = "serde_with::hex::Hex")]
+    pub perso: Vec<u8>,
+}
+
+#[serde_with::serde_as]
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+#[serde(transparent)]
+pub struct RemEntry {
+    #[serde_as(as = "serde_with::hex::Hex")]
+    value: Vec<u8>,
+}
+
+impl PartialEq<Vec<u8>> for RemEntry {
+    fn eq(&self, other: &Vec<u8>) -> bool {
+        self.value.eq(other)
+    }
 }
 
 /// JSON format for CCA reference values (both platform and realm).
@@ -166,22 +206,8 @@ impl RefValueStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const TEST_JSON_RV_OK_0: &str = r#"{
-        "platform": [
-            {
-                "implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                "platform-configuration": "CFCFCFCF",
-                "sw-components": [
-                    {
-                        "component-type": "BL",
-                        "measurement-value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                        "signer-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                        "version": "1.0.2rc5"
-                    }
-                ]
-            }
-        ]
-    }"#;
+
+    const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
     const TEST_HEX: [u8; 32] =
         hex!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     const TEST_IMPL_ID_0: [u8; 32] = TEST_HEX;
@@ -195,7 +221,7 @@ mod tests {
         let mut s = RefValueStore::new();
 
         // load store from JSON
-        s.load_json(TEST_JSON_RV_OK_0).unwrap();
+        s.load_json(TEST_CCA_RVS_OK).unwrap();
 
         // lookup a known platform reference value
         let prv = s.lookup_platform(&TEST_IMPL_ID_0);

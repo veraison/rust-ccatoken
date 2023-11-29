@@ -33,13 +33,13 @@ bitmask! {
 /// Management Monitor (RMM) Specification" v.1.0-eac4
 #[derive(Debug)]
 pub struct Realm {
-    challenge: [u8; 64],  //    10 => bytes .size 64
-    perso: [u8; 64],      // 44235 => bytes .size 64
-    rim: Vec<u8>,         // 44238 => bytes .size {32,48,64}
-    rem: [Vec<u8>; 4],    // 44239 => [ 4*4 bytes .size {32,48,64} ]
-    hash_alg: String,     // 44236 => text
-    rak: [u8; 97],        // 44237 => bytes .size 97
-    rak_hash_alg: String, // 44240 => text
+    pub challenge: [u8; 64],  //    10 => bytes .size 64
+    pub perso: [u8; 64],      // 44235 => bytes .size 64
+    pub rim: Vec<u8>,         // 44238 => bytes .size {32,48,64}
+    pub rem: [Vec<u8>; 4],    // 44239 => [ 4*4 bytes .size {32,48,64} ]
+    pub hash_alg: String,     // 44236 => text
+    pub rak: [u8; 97],        // 44237 => bytes .size 97
+    pub rak_hash_alg: String, // 44240 => text
 
     claims_set: ClaimsSet,
 }

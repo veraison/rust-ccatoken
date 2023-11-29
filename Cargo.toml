@@ -15,10 +15,11 @@ ciborium = "0.2.0"
 multimap = "0.9.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
-hex = "0.4"
+hex = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 hex-literal = "0.4.1"
 bitmask = "0.5.0"
 serde_with = { version = "3.4.0", features = ["hex"] }
 jsonwebkey = "0.3.5"
 cose-rust = "0.1.7"
+ear = "0.1.1"

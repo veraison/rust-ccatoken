@@ -5,6 +5,7 @@ pub use self::common::*;
 pub use self::errors::Error;
 pub use self::evidence::Evidence;
 pub use self::platform::Platform;
+pub use self::platform::SwComponent;
 pub use self::realm::Realm;
 
 mod common;
