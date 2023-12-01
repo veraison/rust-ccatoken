@@ -16,6 +16,8 @@
 //! * Initialise an in-memory store for reference values:
 //!
 //! ```
+//! use ccatoken::store::MemoRefValueStore;
+//!
 //! let jrv = r#"
 //!   {
 //!     "platform": [
@@ -25,7 +27,8 @@
 //!           {
 //!             "measurement-value": "07060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918",
 //!             "signer-id": "07060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918"
-//!           },
+//!           }
+//!         ],
 //!         "platform-configuration": "0107060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918"
 //!       }
 //!     ],
@@ -45,12 +48,15 @@
 //!   }"#;
 //!
 //! let mut rvs: MemoRefValueStore = Default::default();
+//!
 //! rvs.load_json(&jrv).expect("loading reference values");
 //! ```
 //!
 //! * Initialise an in-memory store for trust anchors:
 //!
 //! ```
+//! use ccatoken::store::MemoTrustAnchorStore;
+//!
 //! let jta = r#"
 //! [
 //!   {
@@ -66,7 +72,8 @@
 //! ]"#;
 //!
 //! let mut tas: MemoTrustAnchorStore = Default::default();
-//! tas.load_json(&jta)?;
+//!
+//! tas.load_json(&jta).expect("loading trust anchors");
 //! ```
 
 pub use self::cpak::Cpak;

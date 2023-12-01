@@ -12,12 +12,29 @@
 //! contains a CBOR encoded CCA token.
 //!
 //! ```
-//! let mut e = Evidence::decode(token).expect("decoding CCA token");
+//! use ccatoken::token::Evidence;
+//! use ccatoken::store::MemoRefValueStore;
+//! use ccatoken::store::MemoTrustAnchorStore;
+//!
+//! const token: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
+//!
+//! let mut e = Evidence::decode(&token.to_vec()).expect("decoding CCA token");
+//!
+//! const jta: &str = include_str!("../../testdata/ta.json");
+//! let mut tas = MemoTrustAnchorStore::new();
+//! tas.load_json(jta).expect("loading trust anchors");
 //!
 //! // verify the Platform COSE Sign1 object using a matching CPAK
 //! // verify the Realm COSE Sign1 object using the inlined RAK
 //! // check the binding between Platform and Realm is correct
-//! e.verify(&tas).expect("verifying CCA token");
+//! //
+//! // TODO(PR#16)
+//! //
+//! // e.verify(&tas).expect("verifying CCA token");
+//!
+//! const jrv: &str = include_str!("../../testdata/rv.json");
+//! let mut rvs = MemoRefValueStore::new();
+//! rvs.load_json(jrv).expect("loading reference values");
 //!
 //! // appraise the content of the Platform claims-set against the relevant
 //! // reference values
@@ -27,7 +44,7 @@
 //! e.appraise(&rvs).expect("appraising CCA token");
 //!
 //! // Obtain the verification and appraisal results
-//! (platform_tvec, realm_tvec) = e.get_trust_vectors();
+//! let (platform_tvec, realm_tvec) = e.get_trust_vectors();
 //!
 //! // use the returned trustworthiness vectors
 //! ```
