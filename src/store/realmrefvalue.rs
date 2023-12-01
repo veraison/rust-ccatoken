@@ -19,7 +19,7 @@ pub struct RealmRefValue {
     /// calculate all hash values which are present in the Realm token.  It is
     /// encoded as a human readable string with values from the IANA Hash
     /// Function Textual Names registry.  See:
-    /// https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
+    /// <https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml>
     #[serde(rename = "rak-hash-algorithm")]
     pub rak_hash_alg: String,
 
