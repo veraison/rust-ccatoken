@@ -1,9 +1,10 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::store::IRefValueStore;
+use crate::store::MemoRefValueStore;
 use crate::store::PlatformRefValue;
 use crate::store::RealmRefValue;
-use crate::store::RefValueStore;
 
 use super::common::*;
 use super::errors::Error;
@@ -226,13 +227,13 @@ impl Evidence {
         Ok(())
     }
 
-    pub fn appraise(&mut self, rvs: &RefValueStore) -> Result<(), Error> {
+    pub fn appraise(&mut self, rvs: &impl IRefValueStore) -> Result<(), Error> {
         let impl_id = &self.platform_claims.impl_id;
 
         let r = rvs.lookup_platform(impl_id);
 
         // if platform is unknown, appraisal ends here because no further
-        // trustworthiness deduction can be made
+        // trustworthiness deduction can be made about the supplied evidence
         if r.is_none() {
             self.platform_tvec.hardware.set(UNRECOGNIZED_INSTANCE);
 
@@ -293,7 +294,7 @@ mod tests {
 
     #[test]
     fn appraise_ok() {
-        let mut rvs = RefValueStore::new();
+        let mut rvs = MemoRefValueStore::new();
         rvs.load_json(TEST_CCA_RVS_OK)
             .expect("loading TEST_CCA_RVS_OK");
 
@@ -307,12 +308,12 @@ mod tests {
         println!("RTV = {:?}", e.realm_tvec);
     }
 
-    // platform-specific tests
+    // TODO platform-specific tests
     // - unknown impl-id
     // - non-matching ref-vals
     // - bad security state?
 
-    // realm tests
+    // TODO realm tests
     // - unknown rim
     // - non-matching rem
     // - non-matching personalisation value

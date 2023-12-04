@@ -3,7 +3,8 @@
 
 extern crate ccatoken;
 
-use ccatoken::store::RefValueStore;
+use crate::ccatoken::store::IRefValueStore;
+use crate::ccatoken::store::MemoRefValueStore;
 use hex_literal::hex;
 
 fn main() {
@@ -24,9 +25,9 @@ fn main() {
         ]
     }"#;
 
-    let mut s: RefValueStore = Default::default();
+    let mut s: MemoRefValueStore = Default::default();
 
-    s.load_json(j).unwrap();
+    s.load_json(j).expect("load JSON reference value");
 
     println!(
         "{:#?}",
