@@ -3,33 +3,47 @@
 
 use crate::token;
 use hex_literal::hex;
-use multimap::MultiMap;
-use serde::Deserialize;
-use serde_json::Error;
-use std::sync::RwLock;
+use serde::{Deserialize, Serialize};
 
 /// CCA measured firmware component descriptor
 #[serde_with::serde_as]
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct SwComponent {
     /// The measurement value
-    #[serde(rename(deserialize = "measurement-value"))]
+    #[serde(rename = "measurement-value")]
     #[serde_as(as = "serde_with::hex::Hex")]
     pub mval: Vec<u8>,
 
     /// The identifier of the ROTPK that signs the firmware image
-    #[serde(rename(deserialize = "signer-id"))]
+    #[serde(rename = "signer-id")]
     #[serde_as(as = "serde_with::hex::Hex")]
     pub signer_id: Vec<u8>,
 
     /// (Optional) versionining information of the firmare release, e.g., using
     /// SemVer
-    #[serde(rename(deserialize = "version"))]
+    #[serde(rename = "version")]
     pub version: Option<String>,
 
     /// (Optional) human readable label describing the firwmare, e.g., "TF-A"
-    #[serde(rename(deserialize = "component-type"))]
+    #[serde(rename = "component-type")]
     pub mtyp: Option<String>,
+}
+
+impl SwComponent {
+    pub fn new() -> Self {
+        Self {
+            mval: Default::default(),
+            signer_id: Default::default(),
+            version: Default::default(),
+            mtyp: Default::default(),
+        }
+    }
+}
+
+impl Default for SwComponent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 // Allow comparison between SwComponents in evidence and reference values
@@ -63,20 +77,20 @@ impl PartialEq<token::SwComponent> for SwComponent {
 /// multiple platform-rv records for the same platform at any point in time,
 /// each describing one possible "good" state.
 #[serde_with::serde_as]
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
 pub struct PlatformRefValue {
     /// The platform's implementation identifier
-    #[serde(rename(deserialize = "implementation-id"))]
+    #[serde(rename = "implementation-id")]
     #[serde_as(as = "serde_with::hex::Hex")]
     pub impl_id: [u8; 32],
 
     /// The TCB firmare components
-    #[serde(rename(deserialize = "sw-components"))]
+    #[serde(rename = "sw-components")]
     pub sw_components: Vec<SwComponent>,
 
     /// The CCA platform config contains the System Properties field which is
     /// present in the Root NVS public parameters
-    #[serde(rename(deserialize = "platform-configuration"))]
+    #[serde(rename = "platform-configuration")]
     #[serde_as(as = "serde_with::hex::Hex")]
     pub config: Vec<u8>,
 }

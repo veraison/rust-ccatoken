@@ -23,3 +23,4 @@ serde_with = { version = "3.4.0", features = ["hex"] }
 jsonwebkey = "0.3.5"
 cose-rust = "0.1.7"
 ear = "0.1.1"
+clap = { version = "4.4.10", features = ["derive"] }

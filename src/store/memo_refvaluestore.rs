@@ -3,46 +3,20 @@
 
 use super::platformrefvalue::PlatformRefValue;
 use super::realmrefvalue::RealmRefValue;
+use super::refvalues::RefValues;
 use super::IRefValueStore;
-use hex_literal::hex;
 use multimap::MultiMap;
-use serde::Deserialize;
 use serde_json::Error;
 use std::sync::RwLock;
 
-/// JSON format for CCA reference values (both platform and realm).
-#[derive(Deserialize, Debug)]
-pub struct RefValues {
-    #[serde(rename(deserialize = "platform"))]
-    platform: Option<Vec<PlatformRefValue>>,
-
-    #[serde(rename(deserialize = "realm"))]
-    realm: Option<Vec<RealmRefValue>>,
-}
-
-impl RefValues {
-    /// Parse CCA reference values from JSON
-    pub fn parse(j: &str) -> Result<Self, Error> {
-        let v: RefValues = serde_json::from_str(j)?;
-        // TODO: add validation of variable length fields
-        Ok(v)
-    }
-}
-
 /// The store where platform and realm reference values are stashed
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MemoRefValueStore {
     /// platform reference values, indexed by implementation-id
     p: RwLock<MultiMap<[u8; 32], PlatformRefValue>>,
 
     /// realm reference values, indexed by RIM
     r: RwLock<MultiMap<Vec<u8>, RealmRefValue>>,
-}
-
-impl Default for MemoRefValueStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl MemoRefValueStore {
@@ -93,6 +67,7 @@ impl IRefValueStore for MemoRefValueStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex_literal::hex;
 
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
     const TEST_HEX: [u8; 32] =

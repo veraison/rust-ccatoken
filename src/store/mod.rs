@@ -8,7 +8,9 @@ pub use self::itrustanchorstore::ITrustAnchorStore;
 pub use self::memo_refvaluestore::MemoRefValueStore;
 pub use self::memo_trustanchorstore::MemoTrustAnchorStore;
 pub use self::platformrefvalue::PlatformRefValue;
+pub use self::platformrefvalue::SwComponent;
 pub use self::realmrefvalue::RealmRefValue;
+pub use self::refvalues::RefValues;
 
 mod cpak;
 mod errors;
@@ -18,3 +20,4 @@ mod memo_refvaluestore;
 mod memo_trustanchorstore;
 mod platformrefvalue;
 mod realmrefvalue;
+mod refvalues;
