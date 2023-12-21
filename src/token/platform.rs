@@ -484,6 +484,15 @@ impl Platform {
 
         Ok(())
     }
+    pub fn get_challenge(&self) -> Result<Vec<u8>, Error> {
+        let p_nonce = self.challenge.clone();
+        if p_nonce.is_empty() {
+            return Err(Error::MissingClaim(
+                "No Nonce in Platform Claim".to_string(),
+            ));
+        }
+        Ok(p_nonce)
+    }
 }
 
 #[cfg(test)]

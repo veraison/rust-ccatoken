@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::errors::Error;
-use jsonwebkey::JsonWebKey;
+use jsonwebtoken::{self as jwt, jwk};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
@@ -16,7 +16,7 @@ pub struct Cpak {
     pub raw_pkey: Box<RawValue>,
 
     #[serde(skip)]
-    pub pkey: Option<jsonwebkey::JsonWebKey>,
+    pub pkey: Option<jwk::Jwk>,
 
     /// The CCA platform Implementation ID claim uniquely identifies the
     /// implementation of the CCA platform.  The semantics of the CCA platform
@@ -56,12 +56,13 @@ impl Cpak {
     pub fn parse_pkey(&mut self) -> Result<(), Error> {
         let s = self.raw_pkey.get();
 
-        let pkey = serde_json::from_str::<JsonWebKey>(s)
-            .map_err(|e| Error::Syntax(e.to_string()))?
-            .clone();
+        let pkey = serde_json::from_str::<jwk::Jwk>(s).map_err(|e| Error::Syntax(e.to_string()))?;
 
         self.pkey = Some(pkey);
 
         Ok(())
+    }
+    pub fn get_pkey(&mut self) -> Result<Option<jwk::Jwk>, Error> {
+        Ok(self.pkey.clone())
     }
 }
