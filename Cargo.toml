@@ -17,7 +17,6 @@ multimap = "0.9.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 hex = { version = "0.4", features = ["serde"] }
-serde_cbor = "0.11"
 thiserror = "1"
 hex-literal = "0.4.1"
 bitmask = "0.5.0"

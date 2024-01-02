@@ -4,7 +4,7 @@
 use super::cpak::Cpak;
 use super::errors::Error;
 use super::ITrustAnchorStore;
-use jsonwebtoken::{self as jwt, jwk};
+use jsonwebtoken::jwk;
 use std::collections::HashMap;
 use std::sync::RwLock;
 

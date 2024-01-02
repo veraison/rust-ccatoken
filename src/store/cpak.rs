@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::errors::Error;
-use jsonwebtoken::{self as jwt, jwk};
+use jsonwebtoken::jwk;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
@@ -62,7 +62,7 @@ impl Cpak {
 
         Ok(())
     }
-    pub fn get_pkey(&mut self) -> Result<Option<jwk::Jwk>, Error> {
-        Ok(self.pkey.clone())
+    pub fn get_pkey(&mut self) -> Result<Option<&jwk::Jwk>, Error> {
+        Ok(self.pkey.as_ref())
     }
 }

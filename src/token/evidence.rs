@@ -16,15 +16,13 @@ use cose::keys::CoseKey;
 use cose::message::CoseMessage;
 use ear::claim::*;
 use ear::TrustVector;
-use jsonwebtoken::{self as jwt, jwk};
+use jsonwebtoken::jwk;
 use openssl::bn::{BigNum, BigNumContext};
 use openssl::ec::{EcGroup, EcPoint};
 use openssl::error::ErrorStack;
 use openssl::hash::{Hasher, MessageDigest};
 use openssl::nid::Nid;
-use serde::{Deserialize, Serialize};
-use serde_cbor;
-use std::any::Any;
+use serde::Deserialize;
 use std::fs;
 
 const CBOR_TAG: u64 = 399;
@@ -162,6 +160,12 @@ impl Evidence {
 
         t.platform.bytes = collection.raw_platform_token;
         t.realm.bytes = collection.raw_realm_token;
+
+        if t.platform.bytes.is_empty() {
+            return Err(Error::MissingPlatformToken(
+                "Missing Platform Token".to_string(),
+            ));
+        }
 
         t.platform
             .init_decoder(None)
@@ -307,21 +311,11 @@ impl Evidence {
                 .instance_identity
                 .set(UNRECOGNIZED_INSTANCE);
             self.realm_tvec.set_all(NO_CLAIM);
-            return Err(Error::Parse(format!(
+            return Err(Error::NotFoundTA(format!(
                 "Parse platform token failed for {inst_id:?}"
             )));
         }
-        let mut cpak = platform_key.unwrap();
-        let r = cpak.parse_pkey();
-        if r.is_err() {
-            self.platform_tvec
-                .instance_identity
-                .set(UNRECOGNIZED_INSTANCE);
-            self.realm_tvec.set_all(NO_CLAIM);
-            return Err(Error::Parse(format!(
-                "Parse platform token failed for {inst_id:?}"
-            )));
-        }
+        let cpak = platform_key.unwrap();
         if cpak.pkey.is_some() {
             let pkey = cpak.pkey.unwrap();
             let cose_key = compose_cose_key(&self.platform, pkey).map_err(|e| {
@@ -370,7 +364,7 @@ impl Evidence {
         if cose_alg.is_none() {
             self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
             return Err(Error::NoCoseAlgInHeader(
-                ("No Cose Alg in Header").to_string(),
+                "No Cose Alg in Header".to_string(),
             ));
         }
         cose_key.alg(cose_alg.unwrap());
@@ -390,22 +384,12 @@ impl Evidence {
     }
 
     pub fn verify(&mut self, tas: &impl ITrustAnchorStore) -> Result<(), Error> {
-        if self.platform.bytes.is_empty() {
-            self.platform_tvec
-                .instance_identity
-                .set(UNEXPECTED_EVIDENCE);
-            self.realm_tvec.set_all(NO_CLAIM);
-            return Err(Error::MissingPlatformToken(
-                "Missing Platform Token".to_string(),
-            ));
-        }
+        assert!(
+            !self.platform.bytes.is_empty(),
+            "Platform Token is Mandatory"
+        );
         self.verify_platform_token(tas)?;
-        if self.realm.bytes.is_empty() {
-            self.realm_tvec.set_all(NO_CLAIM);
-            return Err(Error::MissingPlatformToken(
-                "Missing Realm Token".to_string(),
-            ));
-        }
+        assert!(!self.realm.bytes.is_empty(), "Realm Token is Mandatory");
         self.verify_realm_token()?;
         self.check_binding()?;
         self.realm_tvec.instance_identity.set(TRUSTWORTHY_INSTANCE);
@@ -429,6 +413,7 @@ impl Evidence {
 
         Ok(cose_key)
     }
+
     fn check_binding(&mut self) -> Result<(), Error> {
         let realm_pub_key = self.realm_claims.get_realm_key()?;
         let realm_pub_key_hash_alg = self.realm_claims.get_rak_hash_alg()?;
@@ -451,7 +436,7 @@ impl Evidence {
             .map_err(|e| Error::HashCalculateFail(format!("{:?}", e)))?;
 
         let p_nonce = self.platform_claims.get_challenge()?;
-        if sum.to_vec() != p_nonce {
+        if sum.to_vec() != *p_nonce {
             self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
             return Err(Error::BindingMismatch(format!(
                 "Platform Nonce: {p_nonce:?}"
@@ -463,7 +448,10 @@ impl Evidence {
 
 fn compose_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, Error> {
     let mut cose_key = CoseKey::new();
-    let cose_alg = cose_message.header.alg.unwrap();
+    let header_alg = cose_message.header.alg.ok_or(Error::NoCoseAlgInHeader(
+        "Missing Alg In Header".to_string(),
+    ));
+    let cose_alg = header_alg.unwrap();
     cose_key.alg(match pkey.common.key_algorithm {
         Some(jwk::KeyAlgorithm::ES256) => cose::algs::ES256,
         Some(jwk::KeyAlgorithm::ES384) => cose::algs::ES384,
@@ -504,7 +492,7 @@ mod tests {
 
     const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
-    const TEST_CBOR_CLAIMS: &str = ("testdata/verification/cca-claims.cbor");
+    const TEST_CBOR_CLAIMS: &str = "testdata/verification/cca-claims.cbor";
     const TEST_PKEY_1: &str = include_str!("../../testdata/verification/pkey-verify-success.json");
     const TEST_PKEY_2: &str = include_str!("../../testdata/verification/pkey-verify-fail.json");
     #[test]

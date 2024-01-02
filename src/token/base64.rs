@@ -23,10 +23,6 @@ impl Bytes {
     pub fn new() -> Self {
         Bytes(Vec::new())
     }
-
-    pub fn as_slice(&self) -> &[u8] {
-        self.0.as_slice()
-    }
 }
 
 impl Default for Bytes {
