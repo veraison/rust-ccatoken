@@ -4,7 +4,7 @@
 use super::cpak::Cpak;
 use super::errors::Error;
 use super::ITrustAnchorStore;
-use jsonwebkey::JsonWebKey;
+use jsonwebtoken::{self as jwt, jwk};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -75,7 +75,7 @@ mod tests {
         assert_eq!(res.inst_id, *TEST_INST_ID_0);
         assert_eq!(res.impl_id, *TEST_IMPL_ID_0);
 
-        let pkey = serde_json::from_str::<JsonWebKey>(TEST_PKEY_0).unwrap();
+        let pkey = serde_json::from_str::<jwk::Jwk>(TEST_PKEY_0).unwrap();
         assert_eq!(res.pkey, Some(pkey));
     }
 }
