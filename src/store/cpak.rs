@@ -62,7 +62,7 @@ impl Cpak {
 
         Ok(())
     }
-    pub fn get_pkey(&mut self) -> Result<Option<jwk::Jwk>, Error> {
-        Ok(self.pkey.clone())
+    pub fn get_pkey(&mut self) -> Result<Option<&jwk::Jwk>, Error> {
+        Ok(self.pkey.as_ref())
     }
 }
