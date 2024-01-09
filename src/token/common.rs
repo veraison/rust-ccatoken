@@ -20,7 +20,7 @@ pub fn is_valid_hash(value: &str) -> bool {
     )
 }
 
-pub fn is_valid_measurement(value: &Vec<u8>) -> bool {
+pub fn is_valid_measurement(value: &[u8]) -> bool {
     matches!(value.len(), 32 | 48 | 64)
 }
 

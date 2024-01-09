@@ -15,6 +15,28 @@ pub enum Error {
     DuplicatedClaim(String),
     #[error("Claim type mismatch: {0}")]
     TypeMismatch(String),
+    #[error("Missing Platform Token: {0}")]
+    MissingPlatformToken(String),
+    #[error("Missing Realm Token: {0}")]
+    MissingRealmToken(String),
+    #[error("Not found Trust Anchor: {0}")]
+    NotFoundTA(String),
+    #[error("parse error: {0}")]
+    Parse(String),
+    #[error("key error: {0}")]
+    Key(String),
+    #[error("Compose Cose Key error: {0}")]
+    ComposeCoseKey(String),
+    #[error("Hash Algorithm Unknown: {0}")]
+    UnknownHash(String),
+    #[error("Binding Check Mismatch: {0}")]
+    BindingMismatch(String),
+    #[error("Hasher Creation Failed: {0}")]
+    HasherCreationFail(String),
+    #[error("Hash Calculation Failed: {0}")]
+    HashCalculateFail(String),
+    #[error("No Cose Alg in Header: {0}")]
+    NoCoseAlgInHeader(String),
 }
 
 impl std::fmt::Debug for Error {
@@ -25,7 +47,18 @@ impl std::fmt::Debug for Error {
             | Error::UnknownClaim(e)
             | Error::MissingClaim(e)
             | Error::DuplicatedClaim(e)
-            | Error::TypeMismatch(e) => {
+            | Error::TypeMismatch(e)
+            | Error::MissingPlatformToken(e)
+            | Error::MissingRealmToken(e)
+            | Error::NotFoundTA(e)
+            | Error::Parse(e)
+            | Error::Key(e)
+            | Error::ComposeCoseKey(e)
+            | Error::UnknownHash(e)
+            | Error::BindingMismatch(e)
+            | Error::HasherCreationFail(e)
+            | Error::HashCalculateFail(e)
+            | Error::NoCoseAlgInHeader(e) => {
                 write!(f, "{}", e)
             }
         }

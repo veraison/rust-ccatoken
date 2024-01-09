@@ -279,6 +279,21 @@ impl Realm {
 
         Ok(())
     }
+    pub fn get_realm_key(&self) -> Result<[u8; 97], Error> {
+        let rak = self.rak;
+        if rak.is_empty() {
+            return Err(Error::MissingClaim("No realm Key".to_string()));
+        }
+        Ok(rak)
+    }
+
+    pub fn get_rak_hash_alg(&self) -> Result<String, Error> {
+        let rak_hash_alg = self.rak_hash_alg.clone();
+        if rak_hash_alg.is_empty() {
+            return Err(Error::MissingClaim("No realm hash alg".to_string()));
+        }
+        Ok(rak_hash_alg)
+    }
 }
 
 mod tests {
