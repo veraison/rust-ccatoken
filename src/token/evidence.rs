@@ -1,24 +1,38 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::store::IRefValueStore;
-use crate::store::PlatformRefValue;
-use crate::store::RealmRefValue;
-
+use super::base64;
 use super::common::*;
 use super::errors::Error;
 use super::platform::Platform;
 use super::realm::Realm;
+use crate::store::IRefValueStore;
+use crate::store::ITrustAnchorStore;
+use crate::store::PlatformRefValue;
+use crate::store::RealmRefValue;
 use ciborium::de::from_reader;
 use ciborium::Value;
+use cose::keys::CoseKey;
 use cose::message::CoseMessage;
 use ear::claim::*;
 use ear::TrustVector;
+use jsonwebtoken::jwk;
+use openssl::bn::{BigNum, BigNumContext};
+use openssl::ec::{EcGroup, EcPoint};
+use openssl::error::ErrorStack;
+use openssl::hash::{Hasher, MessageDigest};
+use openssl::nid::Nid;
 use serde::Deserialize;
+use std::fs;
 
 const CBOR_TAG: u64 = 399;
 const PLATFORM_LABEL: i128 = 44234;
 const REALM_LABEL: i128 = 44241;
+
+const SHA_224: &str = "sha-224";
+const SHA_256: &str = "sha-256";
+const SHA_384: &str = "sha-384";
+const SHA_512: &str = "sha-512";
 
 #[derive(Debug, Deserialize)]
 struct CBORCollection {
@@ -112,9 +126,9 @@ pub struct Evidence {
     /// decoded realm claims-set
     pub realm_claims: Realm,
     /// COSE Sign1 envelope for the platform claims-set
-    platform: CoseMessage,
+    pub platform: CoseMessage,
     /// COSE Sign1 envelope for the realm claims-set
-    realm: CoseMessage,
+    pub realm: CoseMessage,
     /// Platform appraisal trust vector
     platform_tvec: TrustVector,
     /// Realm appraisal trust vector
@@ -146,6 +160,12 @@ impl Evidence {
 
         t.platform.bytes = collection.raw_platform_token;
         t.realm.bytes = collection.raw_realm_token;
+
+        if t.platform.bytes.is_empty() {
+            return Err(Error::MissingPlatformToken(
+                "Missing Platform Token".to_string(),
+            ));
+        }
 
         t.platform
             .init_decoder(None)
@@ -280,6 +300,190 @@ impl Evidence {
     pub fn get_trust_vectors(&self) -> (TrustVector, TrustVector) {
         (self.platform_tvec, self.realm_tvec)
     }
+    pub fn verify_platform_token(&mut self, tas: &impl ITrustAnchorStore) -> Result<(), Error> {
+        let inst_id = self.platform_claims.inst_id;
+        let platform_key = tas.lookup(&inst_id);
+
+        // if platform is unknown, appraisal ends here because no further
+        // trustworthiness deduction can be made
+        if platform_key.is_none() {
+            self.platform_tvec
+                .instance_identity
+                .set(UNRECOGNIZED_INSTANCE);
+            self.realm_tvec.set_all(NO_CLAIM);
+            return Err(Error::NotFoundTA(format!(
+                "Parse platform token failed for {inst_id:?}"
+            )));
+        }
+        let cpak = platform_key.unwrap();
+        if cpak.pkey.is_some() {
+            let pkey = cpak.pkey.unwrap();
+            let cose_key = compose_cose_key(&self.platform, pkey).map_err(|e| {
+                self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+                self.realm_tvec.set_all(NO_CLAIM);
+                Error::ComposeCoseKey(e.to_string())
+            })?;
+            self.platform.key(&cose_key).map_err(|e| {
+                self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+                self.realm_tvec.set_all(NO_CLAIM);
+                Error::Syntax(format!(
+                    "Add cose-key to Platform Sign1 Message failed: {:?}",
+                    e
+                ))
+            })?;
+            self.platform.decode(None, None).map_err(|e| {
+                self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+                self.realm_tvec.set_all(NO_CLAIM);
+                Error::Syntax(format!("Verify Platform Sign1 message failed: {:?}", e))
+            })?;
+        } else {
+            self.platform_tvec
+                .instance_identity
+                .set(UNRECOGNIZED_INSTANCE);
+            self.realm_tvec.set_all(NO_CLAIM);
+            return Err(Error::NotFoundTA(format!(
+                "Not found the trust anchor for {inst_id:?}"
+            )));
+        }
+        self.platform_tvec
+            .instance_identity
+            .set(TRUSTWORTHY_INSTANCE);
+        Ok(())
+    }
+
+    pub fn verify_realm_token(&mut self) -> Result<(), Error> {
+        let realm_pub_key = self.realm_claims.get_realm_key()?;
+        let mut cose_key = self
+            .ecdsa_public_key_from_raw(&realm_pub_key)
+            .map_err(|e| {
+                self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+                Error::Syntax(format!("Verify Realm Sign1 message failed: {:?}", e))
+            })?;
+
+        let cose_alg = self.realm.header.alg;
+        if cose_alg.is_none() {
+            self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+            return Err(Error::NoCoseAlgInHeader(
+                "No Cose Alg in Header".to_string(),
+            ));
+        }
+        cose_key.alg(cose_alg.unwrap());
+        cose_key.key_ops(vec![cose::keys::KEY_OPS_VERIFY]);
+        self.realm.key(&cose_key).map_err(|e| {
+            self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+            Error::Syntax(format!(
+                "Add cose-key to Realm Sign1 Message failed: {:?}",
+                e
+            ))
+        })?;
+        self.realm.decode(None, None).map_err(|e| {
+            self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+            Error::Syntax(format!("Verify Realm Sign1 message failed: {:?}", e))
+        })?;
+        Ok(())
+    }
+
+    pub fn verify(&mut self, tas: &impl ITrustAnchorStore) -> Result<(), Error> {
+        assert!(
+            !self.platform.bytes.is_empty(),
+            "Platform Token is Mandatory"
+        );
+        self.verify_platform_token(tas)?;
+        assert!(!self.realm.bytes.is_empty(), "Realm Token is Mandatory");
+        self.verify_realm_token()?;
+        self.check_binding()?;
+        self.realm_tvec.instance_identity.set(TRUSTWORTHY_INSTANCE);
+        Ok(())
+    }
+
+    fn ecdsa_public_key_from_raw(&self, data: &[u8]) -> Result<CoseKey, ErrorStack> {
+        let group = EcGroup::from_curve_name(Nid::SECP384R1)?;
+        let mut ctx = BigNumContext::new()?;
+        let point = EcPoint::from_bytes(&group, data, &mut ctx)?;
+
+        let mut x = BigNum::new()?;
+        let mut y = BigNum::new()?;
+        point.affine_coordinates(&group, &mut x, &mut y, &mut ctx)?;
+
+        let mut cose_key = CoseKey::new();
+        cose_key.kty(cose::keys::EC2);
+        cose_key.crv(cose::keys::P_384);
+        cose_key.x(x.to_vec());
+        cose_key.y(y.to_vec());
+
+        Ok(cose_key)
+    }
+
+    fn check_binding(&mut self) -> Result<(), Error> {
+        let realm_pub_key = self.realm_claims.get_realm_key()?;
+        let realm_pub_key_hash_alg = self.realm_claims.get_rak_hash_alg()?;
+        let mut hasher = match realm_pub_key_hash_alg.as_str() {
+            SHA_224 => Hasher::new(MessageDigest::sha224())
+                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
+            SHA_256 => Hasher::new(MessageDigest::sha256())
+                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
+            SHA_384 => Hasher::new(MessageDigest::sha384())
+                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
+            SHA_512 => Hasher::new(MessageDigest::sha512())
+                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
+            x => return Err(Error::UnknownHash(x.to_string())),
+        };
+        hasher
+            .update(&realm_pub_key)
+            .map_err(|e| Error::HashCalculateFail(format!("{:?}", e)))?;
+        let sum = hasher
+            .finish()
+            .map_err(|e| Error::HashCalculateFail(format!("{:?}", e)))?;
+
+        let p_nonce = self.platform_claims.get_challenge()?;
+        if sum.to_vec() != *p_nonce {
+            self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+            return Err(Error::BindingMismatch(format!(
+                "Platform Nonce: {p_nonce:?}"
+            )));
+        }
+        Ok(())
+    }
+}
+
+fn compose_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, Error> {
+    let mut cose_key = CoseKey::new();
+    let header_alg = cose_message.header.alg.ok_or(Error::NoCoseAlgInHeader(
+        "Missing Alg In Header".to_string(),
+    ));
+    let cose_alg = header_alg.unwrap();
+    cose_key.alg(match pkey.common.key_algorithm {
+        Some(jwk::KeyAlgorithm::ES256) => cose::algs::ES256,
+        Some(jwk::KeyAlgorithm::ES384) => cose::algs::ES384,
+        Some(jwk::KeyAlgorithm::EdDSA) => cose::algs::EDDSA,
+        Some(a) => return Err(Error::Key(format!("unsupported algorithm {a:?}"))),
+        None => cose_alg,
+    });
+    cose_key.key_ops(vec![cose::keys::KEY_OPS_VERIFY]);
+
+    match pkey.algorithm {
+        jwk::AlgorithmParameters::EllipticCurve(ec_params) => {
+            cose_key.kty(cose::keys::EC2);
+            cose_key.crv(match ec_params.curve {
+                jwk::EllipticCurve::P256 => cose::keys::P_256,
+                jwk::EllipticCurve::P384 => cose::keys::P_384,
+                jwk::EllipticCurve::P521 => cose::keys::P_521,
+                c => return Err(Error::Key(format!("invalid EC2 curve {c:?}"))),
+            });
+            cose_key.x(base64::decode_str(ec_params.x.as_str())?);
+            cose_key.y(base64::decode_str(ec_params.y.as_str())?);
+        }
+        jwk::AlgorithmParameters::OctetKeyPair(okp_params) => {
+            cose_key.kty(cose::keys::OKP);
+            cose_key.crv(match okp_params.curve {
+                jwk::EllipticCurve::Ed25519 => cose::keys::ED25519,
+                c => return Err(Error::Key(format!("invalid OKP curve {c:?}"))),
+            });
+            cose_key.x(base64::decode_str(okp_params.x.as_str())?);
+        }
+        a => return Err(Error::Key(format!("unsupported algorithm params {a:?}"))),
+    }
+    Ok(cose_key)
 }
 
 mod tests {
@@ -288,7 +492,9 @@ mod tests {
 
     const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
-
+    const TEST_CBOR_CLAIMS: &str = "testdata/verification/cca-claims.cbor";
+    const TEST_PKEY_1: &str = include_str!("../../testdata/verification/pkey-verify-success.json");
+    const TEST_PKEY_2: &str = include_str!("../../testdata/verification/pkey-verify-fail.json");
     #[test]
     fn decode_good_token() {
         let r = Evidence::decode(&TEST_CCA_TOKEN_OK.to_vec());
@@ -321,4 +527,42 @@ mod tests {
     // - unknown rim
     // - non-matching rem
     // - non-matching personalisation value
+
+    #[test]
+    fn verify_platform_token_ok() {
+        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
+        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
+        let pkey = serde_json::from_str::<jwk::Jwk>(TEST_PKEY_1).expect("Abstract Pkey failed");
+        let cose_key = compose_cose_key(&evidence.platform, pkey).expect("Compose the key failed");
+        evidence.platform.key(&cose_key).unwrap();
+        let r = evidence.platform.decode(None, None);
+        assert!(r.is_ok())
+    }
+
+    #[test]
+    fn verify_platform_token_error() {
+        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
+        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
+        let pkey = serde_json::from_str::<jwk::Jwk>(TEST_PKEY_2).expect("Abstract Pkey failed");
+
+        let cose_key = compose_cose_key(&evidence.platform, pkey).expect("Compose the key failed");
+        evidence.platform.key(&cose_key).unwrap();
+        let r = evidence.platform.decode(None, None);
+        assert!(r.is_err())
+    }
+
+    #[test]
+    fn verify_realm_token_ok() {
+        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
+        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
+        let r = evidence.verify_realm_token();
+        assert!(r.is_ok())
+    }
+    #[test]
+    fn check_binding_ok() {
+        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
+        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
+        let r = evidence.check_binding();
+        assert!(r.is_ok())
+    }
 }

@@ -484,6 +484,9 @@ impl Platform {
 
         Ok(())
     }
+    pub fn get_challenge(&self) -> Result<&Vec<u8>, Error> {
+        Ok(self.challenge.as_ref())
+    }
 }
 
 #[cfg(test)]
