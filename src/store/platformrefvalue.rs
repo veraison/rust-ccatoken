@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::token;
-use hex_literal::hex;
 use serde::{Deserialize, Serialize};
 
 /// CCA measured firmware component descriptor
