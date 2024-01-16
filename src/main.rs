@@ -102,7 +102,7 @@ fn verify(args: &VerifyArgs) -> Result<(TrustVector, TrustVector), Box<dyn Error
 
     let mut e: token::Evidence = token::Evidence::decode(&c)?;
 
-    todo!("verify with args: {:#?}", args);
+    e.verify(&tas)?;
 
     Ok(e.get_trust_vectors())
 }
@@ -114,7 +114,8 @@ fn golden(args: &GoldenArgs) -> Result<(), Box<dyn Error>> {
 
     let j = fs::read_to_string(&args.cpak)?;
 
-    // TODO verify using CPAK
+    let cpak = map_str_to_cpak(&e.platform_claims, &j)?;
+    e.verify_with_cpak(cpak)?;
 
     let rv = map_evidence_to_refval(&e)?;
     fs::write(&args.rvstore, rv)?;
@@ -190,4 +191,17 @@ fn map_evidence_to_trustanchor(p: &token::Platform, cpak: &str) -> Result<String
     let j = serde_json::to_string_pretty(&vec![v])?;
 
     Ok(j)
+}
+
+fn map_str_to_cpak(p: &token::Platform, cpak_str: &str) -> Result<Cpak, Box<dyn Error>> {
+    let raw_pkey = RawValue::from_string(cpak_str.to_string())?;
+
+    let mut v = Cpak {
+        raw_pkey,
+        inst_id: p.inst_id,
+        impl_id: p.impl_id,
+        ..Default::default()
+    };
+    v.parse_pkey()?;
+    Ok(v)
 }

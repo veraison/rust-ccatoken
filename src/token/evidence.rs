@@ -6,10 +6,9 @@ use super::common::*;
 use super::errors::Error;
 use super::platform::Platform;
 use super::realm::Realm;
-use crate::store::IRefValueStore;
-use crate::store::ITrustAnchorStore;
 use crate::store::PlatformRefValue;
 use crate::store::RealmRefValue;
+use crate::store::{Cpak, IRefValueStore, ITrustAnchorStore};
 use ciborium::de::from_reader;
 use ciborium::Value;
 use cose::keys::CoseKey;
@@ -300,22 +299,8 @@ impl Evidence {
     pub fn get_trust_vectors(&self) -> (TrustVector, TrustVector) {
         (self.platform_tvec, self.realm_tvec)
     }
-    pub fn verify_platform_token(&mut self, tas: &impl ITrustAnchorStore) -> Result<(), Error> {
-        let inst_id = self.platform_claims.inst_id;
-        let platform_key = tas.lookup(&inst_id);
 
-        // if platform is unknown, appraisal ends here because no further
-        // trustworthiness deduction can be made
-        if platform_key.is_none() {
-            self.platform_tvec
-                .instance_identity
-                .set(UNRECOGNIZED_INSTANCE);
-            self.realm_tvec.set_all(NO_CLAIM);
-            return Err(Error::NotFoundTA(format!(
-                "Parse platform token failed for {inst_id:?}"
-            )));
-        }
-        let cpak = platform_key.unwrap();
+    pub fn verify_platform_token(&mut self, cpak: Cpak) -> Result<(), Error> {
         if cpak.pkey.is_some() {
             let pkey = cpak.pkey.unwrap();
             let cose_key = compose_cose_key(&self.platform, pkey).map_err(|e| {
@@ -341,6 +326,7 @@ impl Evidence {
                 .instance_identity
                 .set(UNRECOGNIZED_INSTANCE);
             self.realm_tvec.set_all(NO_CLAIM);
+            let inst_id = self.platform_claims.inst_id;
             return Err(Error::NotFoundTA(format!(
                 "Not found the trust anchor for {inst_id:?}"
             )));
@@ -349,6 +335,24 @@ impl Evidence {
             .instance_identity
             .set(TRUSTWORTHY_INSTANCE);
         Ok(())
+    }
+
+    fn abstract_cpak(&mut self, tas: &impl ITrustAnchorStore) -> Result<Cpak, Error> {
+        let inst_id = self.platform_claims.inst_id;
+        let platform_key = tas.lookup(&inst_id);
+
+        // if platform is unknown, appraisal ends here because no further
+        // trustworthiness deduction can be made
+        if platform_key.is_none() {
+            self.platform_tvec
+                .instance_identity
+                .set(UNRECOGNIZED_INSTANCE);
+            self.realm_tvec.set_all(NO_CLAIM);
+            return Err(Error::NotFoundTA(format!(
+                "Parse platform token failed for {inst_id:?}"
+            )));
+        }
+        Ok(platform_key.unwrap())
     }
 
     pub fn verify_realm_token(&mut self) -> Result<(), Error> {
@@ -388,7 +392,21 @@ impl Evidence {
             !self.platform.bytes.is_empty(),
             "Platform Token is Mandatory"
         );
-        self.verify_platform_token(tas)?;
+        let cpak = self.abstract_cpak(tas)?;
+        self.verify_platform_token(cpak)?;
+        assert!(!self.realm.bytes.is_empty(), "Realm Token is Mandatory");
+        self.verify_realm_token()?;
+        self.check_binding()?;
+        self.realm_tvec.instance_identity.set(TRUSTWORTHY_INSTANCE);
+        Ok(())
+    }
+
+    pub fn verify_with_cpak(&mut self, cpak: Cpak) -> Result<(), Error> {
+        assert!(
+            !self.platform.bytes.is_empty(),
+            "Platform Token is Mandatory"
+        );
+        self.verify_platform_token(cpak)?;
         assert!(!self.realm.bytes.is_empty(), "Realm Token is Mandatory");
         self.verify_realm_token()?;
         self.check_binding()?;
