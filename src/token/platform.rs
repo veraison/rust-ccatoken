@@ -495,10 +495,7 @@ mod tests {
 
     #[test]
     fn platform_ok() {
-        let buf = include_bytes!(
-              "../testdata/platform-claims.cbor"
-            )
-        .to_vec();
+        let buf = include_bytes!("../testdata/platform-claims.cbor").to_vec();
 
         let _p = Platform::decode(&buf).unwrap();
 
