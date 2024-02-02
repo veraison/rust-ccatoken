@@ -495,26 +495,9 @@ mod tests {
 
     #[test]
     fn platform_ok() {
-        let buf = hex!(
-        "a9190109781c687474703a2f2f61726d2e636f6d2f4343412d5353442f31"
-        "2e302e300a5840aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaa19095c5820aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1901005821010bbbbbbbbbbb"
-        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb19096144"
-        "cfcfcfcf19095b19300019095f82a4025840aaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa055840bbbbbbbbbb"
-        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb04"
-        "65312e302e3006677368612d323536a4025840cccccccccccccccccccccc"
-        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-        "cccccccccccccccccccccccccccccccccccccccccccccc055840dddddddd"
-        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
-        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
-        "0465312e302e3006677368612d323536190960781868747470733a2f2f63"
-        "63615f76657269666965722e6f7267190962677368612d323536"
-        )
+        let buf = include_bytes!(
+              "../testdata/platform-claims.cbor"
+            )
         .to_vec();
 
         let _p = Platform::decode(&buf).unwrap();
