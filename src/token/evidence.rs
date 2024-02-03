@@ -507,12 +507,19 @@ fn compose_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKe
 mod tests {
     use super::*;
     use crate::store::MemoRefValueStore;
+    
+    let cca_token_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/cca-token.cbor");
+    let rv_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/rv.json");
+    let cbor_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/cca-claims.cbor");
+    let pkey_1_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-success.json");
+    let pkey_2_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-fail.json");
 
-    const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
-    const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
-    const TEST_CBOR_CLAIMS: &str = "testdata/verification/cca-claims.cbor";
-    const TEST_PKEY_1: &str = include_str!("../../testdata/verification/pkey-verify-success.json");
-    const TEST_PKEY_2: &str = include_str!("../../testdata/verification/pkey-verify-fail.json");
+    const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!(&cca_token_path);
+    const TEST_CCA_RVS_OK: &str = include_str!(&rv_path);
+    const TEST_CBOR_CLAIMS: &str = cbor_claims_path ;
+    const TEST_PKEY_1: &str = include_str!(&pkey_1_path);
+    const TEST_PKEY_2: &str = include_str!(&pkey_2_path);
+
     #[test]
     fn decode_good_token() {
         let r = Evidence::decode(&TEST_CCA_TOKEN_OK.to_vec());
