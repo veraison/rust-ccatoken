@@ -508,11 +508,11 @@ mod tests {
     use super::*;
     use crate::store::MemoRefValueStore;
     
-    let cca_token_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/cca-token.cbor");
-    let rv_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/rv.json");
-    let cbor_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/cca-claims.cbor");
-    let pkey_1_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-success.json");
-    let pkey_2_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-fail.json");
+    const cca_token_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/cca-token.cbor");
+    const rv_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/rv.json");
+    const cbor_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/cca-claims.cbor");
+    const pkey_1_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-success.json");
+    const pkey_2_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-fail.json");
 
     const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!(&cca_token_path);
     const TEST_CCA_RVS_OK: &str = include_str!(&rv_path);
