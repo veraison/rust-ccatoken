@@ -299,14 +299,16 @@ impl Realm {
 mod tests {
     use super::*;
     use hex_literal::hex;
+    
+    #[test]
+    fn test_file_path_creation(){
+      let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-    let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR"));
-
-    let realm_claims_path: Path = basedir.join("testdata/realm-claims.cbor");
-    let num_key_path: Path =  basedir.join("testdata/realm-claims+spurious-numeric-key.cbor");
-    let text_key_path: Path = basedir.join("testdata/realm-claims+spurious-text-key.cbor");
-    let missing_claims_path: Path = basedir.join("testdata/realm-claims-missing-challange.cbor");
-
+      let realm_claims_path: Path = basedir.join("testdata/realm-claims.cbor");
+      let num_key_path: Path =  basedir.join("testdata/realm-claims+spurious-numeric-key.cbor");
+      let text_key_path: Path = basedir.join("testdata/realm-claims+spurious-text-key.cbor");
+      let missing_claims_path: Path = basedir.join("testdata/realm-claims-missing-challange.cbor");
+    }
     #[test]
     fn realm_ok() {
         let _r = Realm::decode(&TEST_REALM_CLAIMS_OK.to_vec()).expect("successful decode");

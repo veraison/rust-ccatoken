@@ -508,14 +508,16 @@ mod tests {
     use super::*;
     use crate::store::MemoRefValueStore;
 
-    let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR"));
+    #[test]
+    fn test_file_path_creation() {
+       let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-    let cca_token_path: Path = basedir.join("testdata/cca-token.cbor");
-    let cca_rv_path: Path = basedir.join("testdata/rv.json");
-    let cbor_claims_path: Path = basedir.join("testdata/verification/cca_claims.cbor");
-    let pkey_1_path: Path = basedir.join("testdata/verification/pkey-verify-success.json");
-    let pkey_2_path: Path = basedir.join("testdata/verification/pkey-verify-fail.json");
-
+       let cca_token_path: Path = basedir.join("testdata/cca-token.cbor");
+       let cca_rv_path: Path = basedir.join("testdata/rv.json");
+       let cbor_claims_path: Path = basedir.join("testdata/verification/cca_claims.cbor");
+       let pkey_1_path: Path = basedir.join("testdata/verification/pkey-verify-success.json");
+       let pkey_2_path: Path = basedir.join("testdata/verification/pkey-verify-fail.json");
+    }
     #[test]
     fn decode_good_token() {
         let r = Evidence::decode(&TEST_CCA_TOKEN_OK.to_vec());
