@@ -300,15 +300,12 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    const realm_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims.cbor");
-    const num_key_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims+spurious-numeric-key.cbor");
-    const text_key_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims+spurious-text-key.cbor");
-    const missing_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims-missing-challange.cbor");
-        
-    const TEST_REALM_CLAIMS_OK: &[u8; 438] = include_bytes!(&realm_claims_path);
-    const TEST_REALM_CLAIMS_BAD_EXTRA_NUMERIC_KEY: &[u8; 457] = include_bytes!(&num_key_path);
-    const TEST_REALM_CLAIMS_BAD_EXTRA_TEXT_KEY: &[u8; 464] = include_bytes!(&text_key_path);
-    const TEST_REALM_CLAIMS_BAD_MISSING_NONCE: &[u8; 371] = include_bytes!(&missing_claims_path);
+    let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let realm_claims_path: Path = basedir.join("testdata/realm-claims.cbor");
+    let num_key_path: Path =  basedir.join("testdata/realm-claims+spurious-numeric-key.cbor");
+    let text_key_path: Path = basedir.join("testdata/realm-claims+spurious-text-key.cbor");
+    let missing_claims_path: Path = basedir.join("testdata/realm-claims-missing-challange.cbor");
 
     #[test]
     fn realm_ok() {

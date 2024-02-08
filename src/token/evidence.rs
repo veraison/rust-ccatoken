@@ -508,17 +508,14 @@ mod tests {
     use super::*;
     use crate::store::MemoRefValueStore;
 
-    const cca_token_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/cca-token.cbor");
-    const cca_rv_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/rv.json");
-    const cbor_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/cca_claims.cbor");
-    const pkey_1_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-success.json");
-    const pkey_2_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/verification/pkey-verify-fail.json");
+    let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-    const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!(&cca_token_path);
-    const TEST_CCA_RVS_OK: &str = include_str!(&cca_rv_path);
-    const TEST_CBOR_CLAIMS: &str = cbor_claims_path;
-    const TEST_PKEY_1: &str = include_str!(&pkey_1_path);
-    const TEST_PKEY_2: &str = include_str!(&pkey_2_path);
+    let cca_token_path: Path = basedir.join("testdata/cca-token.cbor");
+    let cca_rv_path: Path = basedir.join("testdata/rv.json");
+    let cbor_claims_path: Path = basedir.join("testdata/verification/cca_claims.cbor");
+    let pkey_1_path: Path = basedir.join("testdata/verification/pkey-verify-success.json");
+    let pkey_2_path: Path = basedir.join("testdata/verification/pkey-verify-fail.json");
+
     #[test]
     fn decode_good_token() {
         let r = Evidence::decode(&TEST_CCA_TOKEN_OK.to_vec());

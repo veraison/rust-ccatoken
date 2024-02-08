@@ -496,8 +496,8 @@ mod tests {
     #[test]
     fn platform_ok() {
         
-        const test_vector_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/platform-claims.cbor");
-        let buf = include_bytes!(&let_vector_path).to_vec();
+        let basedir: Path = Path::new(env!("CARGO_MANIFEST_DIR")); 
+        let test_vector_path: Path = basedir.join("testdata/platform-claims.cbor");
 
         let _p = Platform::decode(&buf).unwrap();
 
