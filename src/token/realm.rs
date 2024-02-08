@@ -300,13 +300,15 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
-    const TEST_REALM_CLAIMS_OK: &[u8; 438] = include_bytes!("../../testdata/realm-claims.cbor");
-    const TEST_REALM_CLAIMS_BAD_EXTRA_NUMERIC_KEY: &[u8; 457] =
-        include_bytes!("../../testdata/realm-claims+spurious-numeric-key.cbor");
-    const TEST_REALM_CLAIMS_BAD_EXTRA_TEXT_KEY: &[u8; 464] =
-        include_bytes!("../../testdata/realm-claims+spurious-text-key.cbor");
-    const TEST_REALM_CLAIMS_BAD_MISSING_NONCE: &[u8; 371] =
-        include_bytes!("../../testdata/realm-claims-missing-challenge.cbor");
+    const realm_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims.cbor");
+    const num_key_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims+spurious-numeric-key.cbor");
+    const text_key_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims+spurious-text-key.cbor");
+    const missing_claims_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/realm-claims-missing-challange.cbor");
+        
+    const TEST_REALM_CLAIMS_OK: &[u8; 438] = include_bytes!(&realm_claims_path);
+    const TEST_REALM_CLAIMS_BAD_EXTRA_NUMERIC_KEY: &[u8; 457] = include_bytes!(&num_key_path);
+    const TEST_REALM_CLAIMS_BAD_EXTRA_TEXT_KEY: &[u8; 464] = include_bytes!(&text_key_path);
+    const TEST_REALM_CLAIMS_BAD_MISSING_NONCE: &[u8; 371] = include_bytes!(&missing_claims_path);
 
     #[test]
     fn realm_ok() {
