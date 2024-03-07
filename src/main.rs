@@ -61,12 +61,32 @@ struct GoldenArgs {
 fn main() {
     match CCATokenCli::parse() {
         CCATokenCli::Appraise(args) => match appraise(&args) {
-            Ok((_, _)) => println!("appraisal successful"),
+            Ok((platform_tvec, realm_tvec)) => {
+                println!("appraisal completed");
+                println!(
+                    "platform trust vector: {}",
+                    serde_json::to_string_pretty(&platform_tvec).unwrap()
+                );
+                println!(
+                    "realm trust vector: {}",
+                    serde_json::to_string_pretty(&realm_tvec).unwrap()
+                );
+            }
             Err(e) => eprintln!("appraisal failed: {e}"),
         },
 
         CCATokenCli::Verify(args) => match verify(&args) {
-            Ok((_, _)) => println!("verification successful"),
+            Ok((platform_tvec, realm_tvec)) => {
+                println!("verification completed");
+                println!(
+                    "platform trust vector: {}",
+                    serde_json::to_string_pretty(&platform_tvec).unwrap()
+                );
+                println!(
+                    "realm trust vector: {}",
+                    serde_json::to_string_pretty(&realm_tvec).unwrap()
+                );
+            }
             Err(e) => eprintln!("verification failed: {e}"),
         },
 
