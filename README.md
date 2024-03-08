@@ -27,17 +27,21 @@ If the token is not successfully verified with CPAK no values are extracted.
 ```sh
 ccatoken golden \
     -e testdata/cca-token.cbor \
-    -c testdata/pkey.json \
+    -c testdata/cpak.json \
     -t golden-tastore.json \
     -r golden-rvstore.json
 ```
 
-On success, the two "golden" stores are saved on disk.  The contents can be pretty-printed using `jq(1)` as follows:
+On success:
+```
+golden values extraction successful
+```
+the two "golden" stores are saved on disk.  The contents can be pretty-printed using `jq(1)` as follows:
 
 ```sh
 jq . golden-*.json
 ```
-which should produce the following output:
+which should produce an output similar to the following:
 ```json
 {
   "platform": [
@@ -89,10 +93,10 @@ which should produce the following output:
 [
   {
     "pkey": {
-      "crv": "P-256",
+      "crv": "P-384",
       "kty": "EC",
-      "x": "TKRFE_RwSXooI8DdatPOYg_uiKm2XrtT_uEMEvqQZrw",
-      "y": "CRx3H8NHN1lcxqKi92P0OsZBxX3VFaktllpD3SjtN7s"
+      "x": "IShnxS4rlQiwpCCpBWDzlNLfqiG911FP8akBr-fh94uxHU5m-Kijivp2r2oxxN6M",
+      "y": "hM4tr8mWQli1P61xh3T0ViDREbF26DGOEYfbAjWjGNN7pZf-6A4OTHYqEryz6m7U"
     },
     "implementation-id": "7f454c4602010100000000000000000003003e00010000005058000000000000",
     "instance-id": "0107060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918"
@@ -100,11 +104,9 @@ which should produce the following output:
 ]
 ```
 
-
-
 ### `ccatoken appraise`
 
-The `appraise` command tries to match the supplied CCA token against the supplied reference values.
+The `appraise` command tries to match the supplied CCA token and reference values.
 
 ```sh
 ccatoken appraise \
@@ -112,12 +114,38 @@ ccatoken appraise \
     -r golden-rvstore.json
 ```
 
-### `ccatoken verify` :construction:
+On successful completion, the computed trust vectors for the platform and realm are printed to stdout:
+```
+appraisal completed
+platform trust vector: {
+  "instance-identity": 2,
+  "configuration": 2,
+  "executables": 3,
+  "hardware": 2,
+  "runtime-opaque": 32
+}
+realm trust vector: {
+  "executables": 2
+}
+```
 
-The `verify` command cryptographically verifis the supplied CCA token using a matching CPAK from the trust anchor store.
+### `ccatoken verify`
+
+The `verify` command cryptographically verifies the supplied CCA token using a matching CPAK from the trust anchor store.
 
 ```sh
 ccatoken verify \
     -e testdata/cca-token.cbor \
-    -r golden-tastore.json
+    -t golden-tastore.json
+```
+
+On successful completion, the computed trust vectors for the platform and realm are printed to stdout:
+```
+verification completed
+platform trust vector: {
+  "instance-identity": 2
+}
+realm trust vector: {
+  "instance-identity": 2
+}
 ```
