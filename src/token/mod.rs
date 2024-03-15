@@ -16,7 +16,7 @@
 //! use ccatoken::store::MemoRefValueStore;
 //! use ccatoken::store::MemoTrustAnchorStore;
 //!
-//! const token: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
+//! const token: &[u8; 1222] = include_bytes!("../../testdata/cca-token-01.cbor");
 //!
 //! let mut e = Evidence::decode(&token.to_vec()).expect("decoding CCA token");
 //!
@@ -27,10 +27,7 @@
 //! // verify the Platform COSE Sign1 object using a matching CPAK
 //! // verify the Realm COSE Sign1 object using the inlined RAK
 //! // check the binding between Platform and Realm is correct
-//! //
-//! // TODO(PR#16)
-//! //
-//! // e.verify(&tas).expect("verifying CCA token");
+//! e.verify(&tas).expect("verifying CCA token");
 //!
 //! const jrv: &str = include_str!("../../testdata/rv.json");
 //! let mut rvs = MemoRefValueStore::new();

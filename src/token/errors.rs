@@ -37,6 +37,8 @@ pub enum Error {
     HashCalculateFail(String),
     #[error("No Cose Alg in Header: {0}")]
     NoCoseAlgInHeader(String),
+    #[error("Bad internal state: {0}")]
+    BadInternalState(String),
 }
 
 impl std::fmt::Debug for Error {
@@ -58,7 +60,8 @@ impl std::fmt::Debug for Error {
             | Error::BindingMismatch(e)
             | Error::HasherCreationFail(e)
             | Error::HashCalculateFail(e)
-            | Error::NoCoseAlgInHeader(e) => {
+            | Error::NoCoseAlgInHeader(e)
+            | Error::BadInternalState(e) => {
                 write!(f, "{}", e)
             }
         }

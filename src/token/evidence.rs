@@ -28,9 +28,7 @@ const CBOR_TAG: u64 = 399;
 const PLATFORM_LABEL: i128 = 44234;
 const REALM_LABEL: i128 = 44241;
 
-const SHA_224: &str = "sha-224";
 const SHA_256: &str = "sha-256";
-const SHA_384: &str = "sha-384";
 const SHA_512: &str = "sha-512";
 
 #[derive(Debug, Deserialize)]
@@ -118,19 +116,19 @@ impl CBORCollection {
     }
 }
 
-/// This structure collects all the structural aspects of the CCA token
+/// Collects all the components of a CCA token
 pub struct Evidence {
-    /// decoded platform claims-set
+    /// Decoded platform claims-set
     pub platform_claims: Platform,
-    /// decoded realm claims-set
+    /// Decoded realm claims-set
     pub realm_claims: Realm,
     /// COSE Sign1 envelope for the platform claims-set
     pub platform: CoseMessage,
     /// COSE Sign1 envelope for the realm claims-set
     pub realm: CoseMessage,
-    /// Platform appraisal trust vector
+    /// Platform appraisal AR4SI trust vector
     platform_tvec: TrustVector,
-    /// Realm appraisal trust vector
+    /// Realm appraisal AR4SI trust vector
     realm_tvec: TrustVector,
 }
 
@@ -141,6 +139,7 @@ impl Default for Evidence {
 }
 
 impl Evidence {
+    /// Return a new, default Evidence object
     pub fn new() -> Self {
         Self {
             platform_claims: Default::default(),
@@ -152,6 +151,7 @@ impl Evidence {
         }
     }
 
+    /// Decode a CBOR-encoded CCA Token and instantiate an Evidence object.
     pub fn decode(buf: &Vec<u8>) -> Result<Evidence, Error> {
         let collection = CBORCollection::decode(buf)?;
 
@@ -245,6 +245,14 @@ impl Evidence {
         Ok(())
     }
 
+    /// Appraise the CCA Token's platform and realm claims-sets against the
+    /// supplied reference values store.
+    /// On success, the results of the appraisal are stored in the relevant
+    /// AR4SI trust vectors, which can be accessed using
+    /// [Evidence::get_trust_vectors()].
+    /// A call to this method will fail only on an internal error, i.e., in
+    /// general a failure to appraise is only reflected in the trust vectors'
+    /// state.
     pub fn appraise(&mut self, rvs: &impl IRefValueStore) -> Result<(), Error> {
         let impl_id = &self.platform_claims.impl_id;
 
@@ -296,108 +304,177 @@ impl Evidence {
         Ok(())
     }
 
+    /// Return the current state of the AR4SI trust vectors associated with platform and realm
     pub fn get_trust_vectors(&self) -> (TrustVector, TrustVector) {
         (self.platform_tvec, self.realm_tvec)
     }
 
-    pub fn verify_platform_token(&mut self, cpak: Cpak) -> Result<(), Error> {
-        if cpak.pkey.is_some() {
-            let pkey = cpak.pkey.unwrap();
-            let cose_key = compose_cose_key(&self.platform, pkey).map_err(|e| {
-                self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-                self.realm_tvec.set_all(NO_CLAIM);
-                Error::ComposeCoseKey(e.to_string())
-            })?;
-            self.platform.key(&cose_key).map_err(|e| {
-                self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-                self.realm_tvec.set_all(NO_CLAIM);
-                Error::Syntax(format!(
-                    "Add cose-key to Platform Sign1 Message failed: {:?}",
-                    e
-                ))
-            })?;
-            self.platform.decode(None, None).map_err(|e| {
-                self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-                self.realm_tvec.set_all(NO_CLAIM);
-                Error::Syntax(format!("Verify Platform Sign1 message failed: {:?}", e))
-            })?;
-        } else {
-            self.platform_tvec
-                .instance_identity
-                .set(UNRECOGNIZED_INSTANCE);
-            self.realm_tvec.set_all(NO_CLAIM);
-            let inst_id = self.platform_claims.inst_id;
-            return Err(Error::NotFoundTA(format!(
-                "Not found the trust anchor for {inst_id:?}"
-            )));
+    /// If (for any reason) crypto verification fails, this method will return
+    /// an error which tells the caller to stop verifying immediately: there's
+    /// no need to waste resources on realm verification if the trust anchor is
+    /// not verified.
+    fn verify_platform_token(&mut self, cpak: Cpak) -> Result<(), Error> {
+        let inst_id = self.platform_claims.inst_id;
+
+        match cpak.pkey {
+            None => {
+                //  The trust anchor store is misconfigured, this is an internal error.
+                self.platform_tvec
+                    .instance_identity
+                    .set(VERIFIER_MALFUNCTION);
+
+                return Err(Error::BadInternalState(format!(
+                    "no public key found in the CPAK entry for inst-id:{inst_id:?}"
+                )));
+            }
+            Some(cpak) => {
+                let cose_key = make_cose_key(&self.platform, cpak).map_err(|e| {
+                    self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+
+                    Error::ComposeCoseKey(e.to_string())
+                })?;
+
+                self.platform.key(&cose_key).map_err(|e| {
+                    self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+
+                    Error::Syntax(format!(
+                        "Setting CPAK for platform token with inst-id:{inst_id:?} failed: {e:?}"
+                    ))
+                })?;
+
+                self.platform.decode(None, None).map_err(|e| {
+                    self.platform_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+
+                    Error::Syntax(format!(
+                        "Verifying platform token with inst-id:{inst_id:?} failed: {e:?}"
+                    ))
+                })?;
+            }
         }
+
         self.platform_tvec
             .instance_identity
             .set(TRUSTWORTHY_INSTANCE);
+
         Ok(())
-    }
-
-    fn abstract_cpak(&mut self, tas: &impl ITrustAnchorStore) -> Result<Cpak, Error> {
-        let inst_id = self.platform_claims.inst_id;
-        let platform_key = tas.lookup(&inst_id);
-
-        // if platform is unknown, appraisal ends here because no further
-        // trustworthiness deduction can be made
-        if platform_key.is_none() {
-            self.platform_tvec
-                .instance_identity
-                .set(UNRECOGNIZED_INSTANCE);
-            self.realm_tvec.set_all(NO_CLAIM);
-            return Err(Error::NotFoundTA(format!(
-                "Parse platform token failed for {inst_id:?}"
-            )));
-        }
-        Ok(platform_key.unwrap())
     }
 
     pub fn verify_realm_token(&mut self) -> Result<(), Error> {
         let realm_pub_key = self.realm_claims.get_realm_key()?;
+
+        // re-format RAK into a COSE_Key
         let mut cose_key = self
             .ecdsa_public_key_from_raw(&realm_pub_key)
             .map_err(|e| {
-                self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-                Error::Syntax(format!("Verify Realm Sign1 message failed: {:?}", e))
+                // a failure to reformat should happen only if the rak claim is malformed
+                self.realm_tvec.set_all(UNEXPECTED_EVIDENCE);
+
+                Error::Syntax(format!("formatting the rak claim into ECDSA failed: {e:?}"))
             })?;
 
-        let cose_alg = self.realm.header.alg;
-        if cose_alg.is_none() {
-            self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-            return Err(Error::NoCoseAlgInHeader(
-                "No Cose Alg in Header".to_string(),
-            ));
-        }
-        cose_key.alg(cose_alg.unwrap());
+        // explicitly set key-ops to verify
         cose_key.key_ops(vec![cose::keys::KEY_OPS_VERIFY]);
+
+        // set algorithm for verification
+        match self.realm.header.alg {
+            None => {
+                // a failure to reformat should happen only if the rak claim is malformed
+                self.realm_tvec.set_all(UNEXPECTED_EVIDENCE);
+
+                return Err(Error::Syntax(
+                    "alg header parameter not found in realm token".to_string(),
+                ));
+            }
+            Some(alg) => cose_key.alg(alg),
+        }
+
+        // associate the verification to the message to verify
         self.realm.key(&cose_key).map_err(|e| {
             self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
+
             Error::Syntax(format!(
-                "Add cose-key to Realm Sign1 Message failed: {:?}",
-                e
+                "pairing COSE_Key to realm's COSE_Sign1 message failed: {e:?}"
             ))
         })?;
+
+        // verify signature
         self.realm.decode(None, None).map_err(|e| {
             self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-            Error::Syntax(format!("Verify Realm Sign1 message failed: {:?}", e))
+
+            Error::Syntax(format!(
+                "verifying realm's COSE_Sign1 message failed: {e:?}"
+            ))
         })?;
+
         Ok(())
     }
 
+    /// Cryptographically verify the integrity of the CCA Token using key
+    /// material from the supplied trust anchors' store.  This entails verifying
+    /// the two separate signatures over the realm and platform tokens as well
+    /// as the integrity of their binding.  On success, the results of the
+    /// verification are stored in the relevant AR4SI trust vectors, which can
+    /// be accessed using [Evidence::get_trust_vectors()].
     pub fn verify(&mut self, tas: &impl ITrustAnchorStore) -> Result<(), Error> {
         assert!(
             !self.platform.bytes.is_empty(),
-            "Platform Token is Mandatory"
+            "platform token is mandatory"
         );
-        let cpak = self.abstract_cpak(tas)?;
-        self.verify_platform_token(cpak)?;
-        assert!(!self.realm.bytes.is_empty(), "Realm Token is Mandatory");
-        self.verify_realm_token()?;
-        self.check_binding()?;
+        assert!(!self.realm.bytes.is_empty(), "realm token is mandatory");
+
+        // verify platform evidence first
+        let inst_id = self.platform_claims.inst_id;
+
+        match tas.lookup(&inst_id) {
+            None => {
+                // if platform is unknown, appraisal ends here because no further
+                // trustworthiness deduction can be made
+                self.platform_tvec
+                    .instance_identity
+                    .set(UNRECOGNIZED_INSTANCE);
+
+                self.realm_tvec.set_all(NO_CLAIM);
+
+                return Ok(());
+            }
+            Some(cpak) => {
+                match self.verify_platform_token(cpak) {
+                    Err(_) => {
+                        /* swallow error */
+
+                        // Since the platform also attests the realm attestation
+                        // key (RAK), if verification fails at this stage there
+                        // is no point in continuing because the RAK delegation
+                        // can't be trusted.
+
+                        // platform's trust vector is set in verify_platform_token
+                        self.realm_tvec.set_all(NO_CLAIM);
+
+                        return Ok(());
+                    }
+                    _ => { /* continue with realm */ }
+                }
+            }
+        }
+
+        match self.verify_realm_token() {
+            Err(_) => {
+                /* swallow error */
+                return Ok(());
+            }
+            _ => { /* continue with binding */ }
+        }
+
+        match self.check_binding() {
+            Err(_) => {
+                /* swallow error */
+                return Ok(());
+            }
+            _ => { /* we are done */ }
+        }
+
         self.realm_tvec.instance_identity.set(TRUSTWORTHY_INSTANCE);
+
         Ok(())
     }
 
@@ -432,42 +509,56 @@ impl Evidence {
         Ok(cose_key)
     }
 
+    // this method fails only on an internal errors, which are forwarded as-is
     fn check_binding(&mut self) -> Result<(), Error> {
-        let realm_pub_key = self.realm_claims.get_realm_key()?;
-        let realm_pub_key_hash_alg = self.realm_claims.get_rak_hash_alg()?;
-        let mut hasher = match realm_pub_key_hash_alg.as_str() {
-            SHA_224 => Hasher::new(MessageDigest::sha224())
-                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
-            SHA_256 => Hasher::new(MessageDigest::sha256())
-                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
-            SHA_384 => Hasher::new(MessageDigest::sha384())
-                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
-            SHA_512 => Hasher::new(MessageDigest::sha512())
-                .map_err(|e| Error::HasherCreationFail(format!("{:?}", e)))?,
-            x => return Err(Error::UnknownHash(x.to_string())),
-        };
+        // it is OK to unwrap() here because these three claims are mandatory
+        // and we expect the caller to (indirectly) invoke this methon on
+        // Evidence that has been successfully decoded (and therefore
+        // successfully validated).
+        let realm_pub_key = self.realm_claims.get_realm_key().unwrap();
+        let realm_pub_key_hash_alg = self.realm_claims.get_rak_hash_alg().unwrap();
+        let platform_nonce = self.platform_claims.get_challenge().unwrap();
+
+        let mut hasher = hasher_from_alg(realm_pub_key_hash_alg.as_str())?;
+
         hasher
             .update(&realm_pub_key)
-            .map_err(|e| Error::HashCalculateFail(format!("{:?}", e)))?;
+            .map_err(|e| Error::HashCalculateFail(format!("{e:?}")))?;
+
         let sum = hasher
             .finish()
             .map_err(|e| Error::HashCalculateFail(format!("{:?}", e)))?;
 
-        let p_nonce = self.platform_claims.get_challenge()?;
-        if sum.to_vec() != *p_nonce {
+        if sum.to_vec() != *platform_nonce {
             self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
-            return Err(Error::BindingMismatch(format!(
-                "Platform Nonce: {p_nonce:?}"
-            )));
         }
+
         Ok(())
     }
 }
 
-fn compose_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, Error> {
+fn hasher_from_alg(alg: &str) -> Result<Hasher, Error> {
+    let h;
+
+    match alg {
+        SHA_256 => {
+            h = Hasher::new(MessageDigest::sha256())
+                .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?
+        }
+        SHA_512 => {
+            h = Hasher::new(MessageDigest::sha512())
+                .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?
+        }
+        x => return Err(Error::UnknownHash(x.to_string())),
+    };
+
+    Ok(h)
+}
+
+fn make_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, Error> {
     let mut cose_key = CoseKey::new();
     let header_alg = cose_message.header.alg.ok_or(Error::NoCoseAlgInHeader(
-        "Missing Alg In Header".to_string(),
+        "missing 'alg' header parameter".to_string(),
     ));
     let cose_alg = header_alg.unwrap();
     cose_key.alg(match pkey.common.key_algorithm {
@@ -506,16 +597,17 @@ fn compose_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKe
 
 mod tests {
     use super::*;
-    use crate::store::MemoRefValueStore;
+    use crate::store::{MemoRefValueStore, MemoTrustAnchorStore};
 
-    const TEST_CCA_TOKEN_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token.cbor");
+    const TEST_CCA_TOKEN_1_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token-01.cbor");
+    const TEST_CCA_TOKEN_2_OK: &[u8; 1125] = include_bytes!("../../testdata/cca-token-02.cbor");
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
-    const TEST_CBOR_CLAIMS: &str = "testdata/verification/cca-claims.cbor";
-    const TEST_PKEY_1: &str = include_str!("../../testdata/verification/pkey-verify-success.json");
-    const TEST_PKEY_2: &str = include_str!("../../testdata/verification/pkey-verify-fail.json");
+    const TEST_TA_2_OK: &str = include_str!("../../testdata/ta-02-ok.json");
+    const TEST_TA_2_BAD: &str = include_str!("../../testdata/ta-02-bad.json");
+
     #[test]
     fn decode_good_token() {
-        let r = Evidence::decode(&TEST_CCA_TOKEN_OK.to_vec());
+        let r = Evidence::decode(&TEST_CCA_TOKEN_1_OK.to_vec());
 
         assert!(r.is_ok());
     }
@@ -527,13 +619,19 @@ mod tests {
             .expect("loading TEST_CCA_RVS_OK");
 
         let mut e =
-            Evidence::decode(&TEST_CCA_TOKEN_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_OK");
+            Evidence::decode(&TEST_CCA_TOKEN_1_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_1_OK");
 
         e.appraise(&rvs)
             .expect("validation successful for both platform and realm");
 
-        println!("PTV = {:?}", e.platform_tvec);
-        println!("RTV = {:?}", e.realm_tvec);
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&e.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&e.realm_tvec).unwrap()
+        );
     }
 
     // TODO platform-specific tests
@@ -547,40 +645,53 @@ mod tests {
     // - non-matching personalisation value
 
     #[test]
-    fn verify_platform_token_ok() {
-        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
-        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
-        let pkey = serde_json::from_str::<jwk::Jwk>(TEST_PKEY_1).expect("Abstract Pkey failed");
-        let cose_key = compose_cose_key(&evidence.platform, pkey).expect("Compose the key failed");
-        evidence.platform.key(&cose_key).unwrap();
-        let r = evidence.platform.decode(None, None);
-        assert!(r.is_ok())
+    fn verify_token_ok() {
+        let mut evidence =
+            Evidence::decode(&TEST_CCA_TOKEN_2_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_2_OK");
+
+        let mut tas = MemoTrustAnchorStore::new();
+        tas.load_json(TEST_TA_2_OK).expect("loading trust anchors");
+
+        let r = evidence.verify(&tas);
+
+        assert!(r.is_ok());
+
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&evidence.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
+        );
     }
 
     #[test]
-    fn verify_platform_token_error() {
-        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
-        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
-        let pkey = serde_json::from_str::<jwk::Jwk>(TEST_PKEY_2).expect("Abstract Pkey failed");
+    fn verify_token_error() {
+        let mut evidence =
+            Evidence::decode(&TEST_CCA_TOKEN_2_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_2_OK");
 
-        let cose_key = compose_cose_key(&evidence.platform, pkey).expect("Compose the key failed");
-        evidence.platform.key(&cose_key).unwrap();
-        let r = evidence.platform.decode(None, None);
-        assert!(r.is_err())
-    }
+        let mut tas = MemoTrustAnchorStore::new();
+        tas.load_json(TEST_TA_2_BAD).expect("loading trust anchors");
 
-    #[test]
-    fn verify_realm_token_ok() {
-        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
-        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
-        let r = evidence.verify_realm_token();
-        assert!(r.is_ok())
-    }
-    #[test]
-    fn check_binding_ok() {
-        let cca_cbor = fs::read(TEST_CBOR_CLAIMS).expect("Open Cbor file failed");
-        let mut evidence = Evidence::decode(&cca_cbor).expect("Decode Evidence Failed");
-        let r = evidence.check_binding();
-        assert!(r.is_ok())
+        let r = evidence.verify(&tas);
+
+        assert!(r.is_ok());
+
+        assert_eq!(
+            evidence.platform_tvec.instance_identity,
+            ear::claim::CRYPTO_VALIDATION_FAILED
+        );
+
+        assert_eq!(evidence.realm_tvec.instance_identity, ear::claim::NO_CLAIM);
+
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&evidence.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
+        );
     }
 }

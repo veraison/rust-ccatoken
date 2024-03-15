@@ -1,11 +1,12 @@
 // Copyright 2023 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
-//! Arm CCA attestation token verification.
+//! Arm CCA attestation token verification and appraisal.
 //!
-//! Provides an API to decode, verify and appraise attestation evidence produced
-//! by an Armv9-A CCA platform.  For detailed information about the format, see
-//! §A.7 of the Realm Management Monitor [RMM] specification.
+//! This crate provides an API to decode, verify and appraise attestation
+//! evidence produced by an Armv9-A CCA platform.  For detailed information
+//! about the format, see §A.7 of the Realm Management Monitor [RMM]
+//! specification.
 //!
 //! The API allows:
 //! * Decoding a CBOR-encoded CCA attestation token

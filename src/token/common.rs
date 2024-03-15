@@ -4,20 +4,11 @@
 use super::Error;
 use ciborium::Value;
 
-// See https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
+// Among the admissible values in
+// https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
+// we only support sha-256 and sha-512 as per RMM specification
 pub fn is_valid_hash(value: &str) -> bool {
-    matches!(
-        value,
-        "md2"
-            | "md5"
-            | "sha-1"
-            | "sha-224"
-            | "sha-256"
-            | "sha-384"
-            | "sha-512"
-            | "shake128"
-            | "shake256"
-    )
+    matches!(value, "sha-256" | "sha-512")
 }
 
 pub fn is_valid_measurement(value: &[u8]) -> bool {
