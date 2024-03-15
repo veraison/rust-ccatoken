@@ -538,17 +538,11 @@ impl Evidence {
 }
 
 fn hasher_from_alg(alg: &str) -> Result<Hasher, Error> {
-    let h;
-
-    match alg {
-        SHA_256 => {
-            h = Hasher::new(MessageDigest::sha256())
-                .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?
-        }
-        SHA_512 => {
-            h = Hasher::new(MessageDigest::sha512())
-                .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?
-        }
+    let h = match alg {
+        SHA_256 => Hasher::new(MessageDigest::sha256())
+            .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?,
+        SHA_512 => Hasher::new(MessageDigest::sha512())
+            .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?,
         x => return Err(Error::UnknownHash(x.to_string())),
     };
 
