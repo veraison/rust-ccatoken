@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! The store module provides traits and concrete types to implement the
-//! interface between:
-//! * the verification logics and the store where CCA trust anchors (CPAK) are
-//!   kept
-//! * the appraisal logics and the store where CCA Platform and Realm reference
-//!   values are kept
+//! interfaces between:
+//!
+//! * The verification logics and the store where CCA trust anchors (CPAK) are
+//!   kept;
+//! * The appraisal logics and the store where CCA Platform and Realm reference
+//!   values are kept.
 //!
 //! A simple, in-memory implementation of both stores is also provided by the
 //! [`MemoRefValueStore`] and [`MemoTrustAnchorStore`] objects.
