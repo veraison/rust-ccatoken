@@ -7,6 +7,7 @@ license = "Apache-2.0"
 description = "CCA attestation token decoding, verification, and appraisal"
 keywords = [ "Arm", "CCA", "attestation" ]
 categories = [ "cryptography", "parser implementations" ]
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
