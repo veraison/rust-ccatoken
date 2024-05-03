@@ -25,5 +25,5 @@ serde_with = { version = "3.4.0", features = ["hex"] }
 jsonwebtoken = "9.1.0"
 cose-rust = "0.1.7"
 ear = "0.1.1"
-clap = { version = "4.4.10", features = ["derive"] }
+clap = { version = "=4.4.18", features = ["derive"] }
 openssl = "0.10.34"
