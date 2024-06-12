@@ -22,7 +22,6 @@ use openssl::error::ErrorStack;
 use openssl::hash::{Hasher, MessageDigest};
 use openssl::nid::Nid;
 use serde::Deserialize;
-use std::fs;
 
 const CBOR_TAG: u64 = 399;
 const PLATFORM_LABEL: i128 = 44234;
@@ -467,10 +466,14 @@ impl Evidence {
 
         match self.check_binding() {
             Err(_) => {
-                /* swallow error */
                 return Ok(());
             }
-            _ => { /* we are done */ }
+            _ => {
+                // early return on binder errors
+                if self.realm_tvec.instance_identity.get() == CRYPTO_VALIDATION_FAILED {
+                    return Ok(());
+                }
+            }
         }
 
         self.realm_tvec.instance_identity.set(TRUSTWORTHY_INSTANCE);
@@ -487,6 +490,10 @@ impl Evidence {
         assert!(!self.realm.bytes.is_empty(), "Realm Token is Mandatory");
         self.verify_realm_token()?;
         self.check_binding()?;
+        // early return on binder errors
+        if self.realm_tvec.instance_identity.get() == CRYPTO_VALIDATION_FAILED {
+            return Ok(());
+        }
         self.realm_tvec.instance_identity.set(TRUSTWORTHY_INSTANCE);
         Ok(())
     }
@@ -521,13 +528,17 @@ impl Evidence {
 
         let mut hasher = hasher_from_alg(realm_pub_key_hash_alg.as_str())?;
 
-        hasher
-            .update(&realm_pub_key)
-            .map_err(|e| Error::HashCalculateFail(format!("{e:?}")))?;
+        hasher.update(&realm_pub_key).map_err(|e| {
+            self.realm_tvec.set_all(VERIFIER_MALFUNCTION);
 
-        let sum = hasher
-            .finish()
-            .map_err(|e| Error::HashCalculateFail(format!("{:?}", e)))?;
+            Error::HashCalculateFail(format!("{e:?}"))
+        })?;
+
+        let sum = hasher.finish().map_err(|e| {
+            self.realm_tvec.set_all(VERIFIER_MALFUNCTION);
+
+            Error::HashCalculateFail(format!("{e:?}"))
+        })?;
 
         if sum.to_vec() != *platform_nonce {
             self.realm_tvec.set_all(CRYPTO_VALIDATION_FAILED);
@@ -595,9 +606,11 @@ mod tests {
 
     const TEST_CCA_TOKEN_1_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token-01.cbor");
     const TEST_CCA_TOKEN_2_OK: &[u8; 1125] = include_bytes!("../../testdata/cca-token-02.cbor");
+    const TEST_CCA_TOKEN_BUG_33: &[u8; 2507] = include_bytes!("../../testdata/bug-33-repro.cbor");
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
     const TEST_TA_2_OK: &str = include_str!("../../testdata/ta-02-ok.json");
     const TEST_TA_2_BAD: &str = include_str!("../../testdata/ta-02-bad.json");
+    const TEST_TA_TFA: &str = include_str!("../../testdata/ta-tfa.json");
 
     #[test]
     fn decode_good_token() {
@@ -687,5 +700,21 @@ mod tests {
             "realm trust vector: {}",
             serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
         );
+    }
+
+    #[test]
+    fn bug_33_regression() {
+        let mut evidence = Evidence::decode(&TEST_CCA_TOKEN_BUG_33.to_vec())
+            .expect("decoding TEST_CCA_TOKEN_BUG_33");
+
+        let mut tas = MemoTrustAnchorStore::new();
+        tas.load_json(TEST_TA_TFA).expect("loading trust anchors");
+
+        let r = evidence.verify(&tas);
+
+        assert!(r.is_ok());
+
+        assert!(evidence.realm_tvec.instance_identity.get() == CRYPTO_VALIDATION_FAILED);
+        assert!(evidence.platform_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
     }
 }

@@ -4,7 +4,8 @@ use ccatoken::store::{
 };
 use ccatoken::token;
 use clap::Parser;
-use ear::TrustVector;
+use ear::claim::TRUSTWORTHY_INSTANCE;
+use ear::{TrustTier, TrustVector};
 use serde_json::value::RawValue;
 use std::error::Error;
 use std::fs;
@@ -127,6 +128,19 @@ fn verify(args: &VerifyArgs) -> Result<(TrustVector, TrustVector), Box<dyn Error
     Ok(e.get_trust_vectors())
 }
 
+fn trust_vector_status(tv: TrustVector) -> TrustTier {
+    let mut status = TrustTier::None;
+
+    for claim in tv {
+        let claim_tier = claim.tier();
+        if status < claim_tier {
+            status = claim_tier
+        }
+    }
+
+    status
+}
+
 fn golden(args: &GoldenArgs) -> Result<(), Box<dyn Error>> {
     let c: Vec<u8> = fs::read(&args.evidence)?;
 
@@ -136,6 +150,14 @@ fn golden(args: &GoldenArgs) -> Result<(), Box<dyn Error>> {
 
     let cpak = map_str_to_cpak(&e.platform_claims, &j)?;
     e.verify_with_cpak(cpak)?;
+
+    let (platform_tvec, realm_tvec) = e.get_trust_vectors();
+    if platform_tvec.instance_identity != TRUSTWORTHY_INSTANCE {
+        return Err("platform is not trustworthy".into());
+    }
+    if realm_tvec.instance_identity != TRUSTWORTHY_INSTANCE {
+        return Err("realm is not trustworthy".into());
+    }
 
     let rv = map_evidence_to_refval(&e)?;
     fs::write(&args.rvstore, rv)?;
@@ -192,7 +214,7 @@ fn map_evidence_to_realm_refval(p: &token::Realm) -> Result<RealmRefValue, Box<d
     };
 
     for (i, other) in p.rem.iter().enumerate() {
-        v.rem[i].value = other.clone();
+        v.rem[i].value.clone_from(other);
     }
 
     Ok(v)
