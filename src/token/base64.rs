@@ -75,6 +75,7 @@ impl<'de> Deserialize<'de> for Bytes {
 
 struct BytesVisitor;
 
+#[allow(clippy::needless_lifetimes)]
 impl<'de> Visitor<'de> for BytesVisitor {
     type Value = Bytes;
 
