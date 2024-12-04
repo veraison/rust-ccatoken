@@ -16,6 +16,8 @@ pub enum Error {
     #[error("Claim type mismatch: {0}")]
     TypeMismatch(String),
     #[error("Missing Platform Token: {0}")]
+    UnknownProfile(String),
+    #[error("Unknown profile: {0}")]
     MissingPlatformToken(String),
     #[error("Missing Realm Token: {0}")]
     MissingRealmToken(String),
@@ -50,6 +52,7 @@ impl std::fmt::Debug for Error {
             | Error::MissingClaim(e)
             | Error::DuplicatedClaim(e)
             | Error::TypeMismatch(e)
+            | Error::UnknownProfile(e)
             | Error::MissingPlatformToken(e)
             | Error::MissingRealmToken(e)
             | Error::NotFoundTA(e)

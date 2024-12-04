@@ -7,7 +7,10 @@ use bitmask::*;
 use ciborium::de::from_reader;
 use ciborium::Value;
 
+pub const REALM_PROFILE: &str = "tag:arm.com,2023:realm#1.0.0";
+
 const REALM_CHALLENGE_LABEL: i128 = 10;
+const REALM_PROFILE_LABEL: i128 = 265;
 const REALM_PERSO_LABEL: i128 = 44235;
 const REALM_RIM_LABEL: i128 = 44238;
 const REALM_REM_LABEL: i128 = 44239;
@@ -25,6 +28,7 @@ bitmask! {
         HashAlg    = 0x10,
         Rak        = 0x20,
         RakHashAlg = 0x40,
+        Profile = 0x80,
     }
 }
 
@@ -33,11 +37,13 @@ bitmask! {
 #[derive(Debug)]
 pub struct Realm {
     pub challenge: [u8; 64],  //    10 => bytes .size 64
+    pub profile: String,      //   265 => text
     pub perso: [u8; 64],      // 44235 => bytes .size 64
     pub rim: Vec<u8>,         // 44238 => bytes .size {32,48,64}
     pub rem: [Vec<u8>; 4],    // 44239 => [ 4*4 bytes .size {32,48,64} ]
     pub hash_alg: String,     // 44236 => text
-    pub rak: [u8; 97],        // 44237 => bytes .size 97
+    pub raw_rak: [u8; 97],    // 44237 => bytes .size 97 (profile=="")
+    pub cose_rak: Vec<u8>,    // 44237 => bytes .cbor COSE_Key (profile==REALM_PROFILE)
     pub rak_hash_alg: String, // 44240 => text
 
     claims_set: ClaimsSet,
@@ -53,11 +59,13 @@ impl Realm {
     pub fn new() -> Self {
         Self {
             challenge: [0; 64],
+            profile: String::from(""),
             perso: [0; 64],
             rim: vec![0, 64],
             rem: Default::default(),
             hash_alg: String::from(""),
-            rak: [0; 97],
+            raw_rak: [0; 97],
+            cose_rak: Default::default(),
             rak_hash_alg: String::from(""),
             claims_set: ClaimsSet::none(),
         }
@@ -84,6 +92,15 @@ impl Realm {
         for (k, v) in contents.iter() {
             if let Value::Integer(i) = k {
                 match (*i).into() {
+                    REALM_PROFILE_LABEL => self.set_profile(v)?,
+                    _ => continue,
+                }
+            }
+        }
+
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
                     REALM_CHALLENGE_LABEL => self.set_challenge(v)?,
                     REALM_PERSO_LABEL => self.set_perso(v)?,
                     REALM_RIM_LABEL => self.set_rim(v)?,
@@ -98,6 +115,7 @@ impl Realm {
                 continue;
             }
         }
+
         Ok(())
     }
 
@@ -119,7 +137,34 @@ impl Realm {
             }
         }
 
+        // RAK format depends on the token profile
+        if self.profile == REALM_PROFILE {
+            if self.cose_rak.is_empty() {
+                return Err(Error::Sema("RAK COSE_Key not set".to_string()));
+            }
+        } else if self.raw_rak == [0; 97] {
+            return Err(Error::Sema("RAK raw public key not set".to_string()));
+        }
+
         // TODO: hash-type'd measurements are compatible with hash-alg
+
+        Ok(())
+    }
+
+    fn set_profile(&mut self, v: &Value) -> Result<(), Error> {
+        if self.claims_set.contains(Claims::Profile) {
+            return Err(Error::DuplicatedClaim("profile".to_string()));
+        }
+
+        let p = to_tstr(v, "profile")?;
+
+        if p != REALM_PROFILE {
+            return Err(Error::UnknownProfile(p.to_string()));
+        }
+
+        self.profile = p;
+
+        self.claims_set.set(Claims::Profile);
 
         Ok(())
     }
@@ -203,14 +248,18 @@ impl Realm {
         let x = v.as_bytes().unwrap().clone();
         let x_len = x.len();
 
-        if x_len != 97 {
-            return Err(Error::Sema(format!(
-                "public-key: expecting 97 bytes, got {}",
-                x_len
-            )));
+        // Backwards compatibility with the previous "raw key" format.
+        if self.profile.is_empty() {
+            if x_len != 97 {
+                return Err(Error::Sema(format!(
+                    "public-key: expecting 97 bytes, got {}",
+                    x_len
+                )));
+            }
+            self.raw_rak[..].clone_from_slice(&x);
+        } else {
+            self.cose_rak = x
         }
-
-        self.rak[..].clone_from_slice(&x);
 
         self.claims_set.set(Claims::Rak);
 
@@ -279,19 +328,28 @@ impl Realm {
 
         Ok(())
     }
-    pub fn get_realm_key(&self) -> Result<[u8; 97], Error> {
-        let rak = self.rak;
+
+    pub fn get_realm_key(&self) -> Result<Vec<u8>, Error> {
+        let rak = if self.profile == REALM_PROFILE {
+            self.cose_rak.clone()
+        } else {
+            self.raw_rak.clone().to_vec()
+        };
+
         if rak.is_empty() {
             return Err(Error::MissingClaim("No realm Key".to_string()));
         }
+
         Ok(rak)
     }
 
     pub fn get_rak_hash_alg(&self) -> Result<String, Error> {
         let rak_hash_alg = self.rak_hash_alg.clone();
+
         if rak_hash_alg.is_empty() {
             return Err(Error::MissingClaim("No realm hash alg".to_string()));
         }
+
         Ok(rak_hash_alg)
     }
 }

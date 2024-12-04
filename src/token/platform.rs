@@ -166,7 +166,8 @@ impl SwComponent {
     }
 }
 
-const PLATFORM_PROFILE: &str = "http://arm.com/CCA-SSD/1.0.0";
+const PLATFORM_PROFILE_LEGACY: &str = "http://arm.com/CCA-SSD/1.0.0";
+const PLATFORM_PROFILE: &str = "tag:arm.com,2023:cca_platform#1.0.0";
 
 const PLATFORM_PROFILE_LABEL: i128 = 265;
 const PLATFORM_CHALLENGE_LABEL: i128 = 10;
@@ -303,8 +304,12 @@ impl Platform {
 
         let p = to_tstr(v, "profile")?;
 
-        if p != PLATFORM_PROFILE {
-            return Err(Error::Sema(format!("unknown profile {p}")));
+        // There is not material difference between the two profiles regarding
+        // the platform claims-set arrangement.
+        // However, if p == PLATFORM_PROFILE, then the realm token shall also
+        // have a profile claim.
+        if p != PLATFORM_PROFILE && p != PLATFORM_PROFILE_LEGACY {
+            return Err(Error::UnknownProfile(p.to_string()));
         }
 
         self.profile = p;

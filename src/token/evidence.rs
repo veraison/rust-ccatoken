@@ -6,6 +6,7 @@ use super::common::*;
 use super::errors::Error;
 use super::platform::Platform;
 use super::realm::Realm;
+use super::realm::REALM_PROFILE;
 use crate::store::PlatformRefValue;
 use crate::store::RealmRefValue;
 use crate::store::{Cpak, IRefValueStore, ITrustAnchorStore};
@@ -361,15 +362,29 @@ impl Evidence {
     pub fn verify_realm_token(&mut self) -> Result<(), Error> {
         let realm_pub_key = self.realm_claims.get_realm_key()?;
 
-        // re-format RAK into a COSE_Key
-        let mut cose_key = self
-            .ecdsa_public_key_from_raw(&realm_pub_key)
-            .map_err(|e| {
-                // a failure to reformat should happen only if the rak claim is malformed
+        let mut cose_key: CoseKey;
+
+        if self.realm_claims.profile == REALM_PROFILE {
+            // it is already a COSE_Key, it just need decoding
+            cose_key = CoseKey::new();
+            cose_key.bytes = realm_pub_key;
+            cose_key.decode().map_err(|e| {
+                // a failure to decode should happen only if the rak claim is malformed
                 self.realm_tvec.set_all(UNEXPECTED_EVIDENCE);
 
-                Error::Syntax(format!("formatting the rak claim into ECDSA failed: {e:?}"))
+                Error::Syntax(format!("decoding the rak claim as COSE_Key failed: {e:?}"))
             })?;
+        } else {
+            // re-format RAK into a COSE_Key
+            cose_key = self
+                .ecdsa_public_key_from_raw(&realm_pub_key)
+                .map_err(|e| {
+                    // a failure to reformat should happen only if the rak claim is malformed
+                    self.realm_tvec.set_all(UNEXPECTED_EVIDENCE);
+
+                    Error::Syntax(format!("formatting the rak claim into ECDSA failed: {e:?}"))
+                })?;
+        }
 
         // explicitly set key-ops to verify
         cose_key.key_ops(vec![cose::keys::KEY_OPS_VERIFY]);
@@ -607,6 +622,8 @@ mod tests {
     const TEST_CCA_TOKEN_1_OK: &[u8; 1222] = include_bytes!("../../testdata/cca-token-01.cbor");
     const TEST_CCA_TOKEN_2_OK: &[u8; 1125] = include_bytes!("../../testdata/cca-token-02.cbor");
     const TEST_CCA_TOKEN_BUG_33: &[u8; 2507] = include_bytes!("../../testdata/bug-33-repro.cbor");
+    const TEST_CCA_TOKEN_DRAFT_FFM_00: &[u8; 2124] =
+        include_bytes!("../../testdata/cca-token-draft-ffm-00.cbor");
     const TEST_CCA_RVS_OK: &str = include_str!("../../testdata/rv.json");
     const TEST_TA_2_OK: &str = include_str!("../../testdata/ta-02-ok.json");
     const TEST_TA_2_BAD: &str = include_str!("../../testdata/ta-02-bad.json");
@@ -652,7 +669,7 @@ mod tests {
     // - non-matching personalisation value
 
     #[test]
-    fn verify_token_ok() {
+    fn verify_legacy_token_ok() {
         let mut evidence =
             Evidence::decode(&TEST_CCA_TOKEN_2_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_2_OK");
 
@@ -674,7 +691,7 @@ mod tests {
     }
 
     #[test]
-    fn verify_token_error() {
+    fn verify_legacy_token_error() {
         let mut evidence =
             Evidence::decode(&TEST_CCA_TOKEN_2_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_2_OK");
 
@@ -716,5 +733,30 @@ mod tests {
 
         assert!(evidence.realm_tvec.instance_identity.get() == CRYPTO_VALIDATION_FAILED);
         assert!(evidence.platform_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+    }
+
+    #[test]
+    fn verify_draft_ffm_00_token_ok() {
+        let mut evidence = Evidence::decode(&TEST_CCA_TOKEN_DRAFT_FFM_00.to_vec())
+            .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_00");
+
+        let mut tas = MemoTrustAnchorStore::new();
+        tas.load_json(TEST_TA_TFA).expect("loading trust anchors");
+
+        let r = evidence.verify(&tas);
+
+        assert!(r.is_ok());
+
+        assert!(evidence.realm_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+        assert!(evidence.platform_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&evidence.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
+        );
     }
 }
