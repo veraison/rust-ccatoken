@@ -28,7 +28,7 @@ bitmask! {
         HashAlg    = 0x10,
         Rak        = 0x20,
         RakHashAlg = 0x40,
-        Profile = 0x80,
+        Profile    = 0x80,
     }
 }
 
@@ -89,6 +89,8 @@ impl Realm {
     }
 
     fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        // Extract the profile claim first.  This is because the RAK claim
+        // (44237) has different encodings depending on the profile value.
         for (k, v) in contents.iter() {
             if let Value::Integer(i) = k {
                 match (*i).into() {
