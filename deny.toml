@@ -108,10 +108,13 @@ allow = [
     "Apache-2.0",
     "ISC",
     "OpenSSL",
+    # Superseded by Unicode-3.0
+    # See https://opensource.org/license/unicode-inc-license-agreement-data-files-and-software
     "Unicode-DFS-2016",
     #"Apache-2.0 WITH LLVM-exception",
     # Considered Copyleft, but permitted in this project
     "MPL-2.0",
+    "Unicode-3.0",
 ]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
