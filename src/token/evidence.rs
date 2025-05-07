@@ -69,8 +69,8 @@ impl CBORCollection {
         Ok(())
     }
 
-    fn decode(buf: &Vec<u8>) -> Result<CBORCollection, Error> {
-        let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
+    fn decode<R: std::io::Read>(buf: R) -> Result<CBORCollection, Error> {
+        let v: Value = from_reader(buf).map_err(|e| Error::Syntax(e.to_string()))?;
 
         let mut collection = CBORCollection::new();
 
@@ -152,7 +152,7 @@ impl Evidence {
     }
 
     /// Decode a CBOR-encoded CCA Token and instantiate an Evidence object.
-    pub fn decode(buf: &Vec<u8>) -> Result<Evidence, Error> {
+    pub fn decode<R: std::io::Read>(buf: R) -> Result<Evidence, Error> {
         let collection = CBORCollection::decode(buf)?;
 
         let mut t = Evidence::new();
@@ -632,7 +632,7 @@ mod tests {
 
     #[test]
     fn decode_good_token() {
-        let r = Evidence::decode(&TEST_CCA_TOKEN_1_OK.to_vec());
+        let r = Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice());
 
         assert!(r.is_ok());
     }
@@ -644,7 +644,7 @@ mod tests {
             .expect("loading TEST_CCA_RVS_OK");
 
         let mut e =
-            Evidence::decode(&TEST_CCA_TOKEN_1_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_1_OK");
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
 
         e.appraise(&rvs)
             .expect("validation successful for both platform and realm");
@@ -672,7 +672,7 @@ mod tests {
     #[test]
     fn verify_legacy_token_ok() {
         let mut evidence =
-            Evidence::decode(&TEST_CCA_TOKEN_2_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_2_OK");
+            Evidence::decode(TEST_CCA_TOKEN_2_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_2_OK");
 
         let mut tas = MemoTrustAnchorStore::new();
         tas.load_json(TEST_TA_2_OK).expect("loading trust anchors");
@@ -694,7 +694,7 @@ mod tests {
     #[test]
     fn verify_legacy_token_error() {
         let mut evidence =
-            Evidence::decode(&TEST_CCA_TOKEN_2_OK.to_vec()).expect("decoding TEST_CCA_TOKEN_2_OK");
+            Evidence::decode(TEST_CCA_TOKEN_2_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_2_OK");
 
         let mut tas = MemoTrustAnchorStore::new();
         tas.load_json(TEST_TA_2_BAD).expect("loading trust anchors");
@@ -722,7 +722,7 @@ mod tests {
 
     #[test]
     fn bug_33_regression() {
-        let mut evidence = Evidence::decode(&TEST_CCA_TOKEN_BUG_33.to_vec())
+        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_BUG_33.as_slice())
             .expect("decoding TEST_CCA_TOKEN_BUG_33");
 
         let mut tas = MemoTrustAnchorStore::new();
@@ -738,7 +738,7 @@ mod tests {
 
     #[test]
     fn verify_draft_ffm_00_token_ok() {
-        let mut evidence = Evidence::decode(&TEST_CCA_TOKEN_DRAFT_FFM_00.to_vec())
+        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_00.as_slice())
             .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_00");
 
         let mut tas = MemoTrustAnchorStore::new();

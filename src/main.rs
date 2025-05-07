@@ -104,9 +104,7 @@ fn appraise(args: &AppraiseArgs) -> Result<(TrustVector, TrustVector), Box<dyn E
     let mut rvs: MemoRefValueStore = Default::default();
     rvs.load_json(&j)?;
 
-    let c: Vec<u8> = fs::read(&args.evidence)?;
-
-    let mut e: token::Evidence = token::Evidence::decode(&c)?;
+    let mut e: token::Evidence = token::Evidence::decode(fs::File::open(&args.evidence)?)?;
 
     e.appraise(&rvs)?;
 
@@ -119,9 +117,7 @@ fn verify(args: &VerifyArgs) -> Result<(TrustVector, TrustVector), Box<dyn Error
     let mut tas: MemoTrustAnchorStore = Default::default();
     tas.load_json(&j)?;
 
-    let c: Vec<u8> = fs::read(&args.evidence)?;
-
-    let mut e: token::Evidence = token::Evidence::decode(&c)?;
+    let mut e: token::Evidence = token::Evidence::decode(fs::File::open(&args.evidence)?)?;
 
     e.verify(&tas)?;
 
@@ -129,9 +125,7 @@ fn verify(args: &VerifyArgs) -> Result<(TrustVector, TrustVector), Box<dyn Error
 }
 
 fn golden(args: &GoldenArgs) -> Result<(), Box<dyn Error>> {
-    let c: Vec<u8> = fs::read(&args.evidence)?;
-
-    let mut e: token::Evidence = token::Evidence::decode(&c)?;
+    let mut e: token::Evidence = token::Evidence::decode(fs::File::open(&args.evidence)?)?;
 
     let j = fs::read_to_string(&args.cpak)?;
 
