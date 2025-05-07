@@ -5,7 +5,7 @@ use ccatoken::store::{
 use ccatoken::token;
 use clap::Parser;
 use ear::claim::TRUSTWORTHY_INSTANCE;
-use ear::{TrustTier, TrustVector};
+use ear::TrustVector;
 use serde_json::value::RawValue;
 use std::error::Error;
 use std::fs;
@@ -126,19 +126,6 @@ fn verify(args: &VerifyArgs) -> Result<(TrustVector, TrustVector), Box<dyn Error
     e.verify(&tas)?;
 
     Ok(e.get_trust_vectors())
-}
-
-fn trust_vector_status(tv: TrustVector) -> TrustTier {
-    let mut status = TrustTier::None;
-
-    for claim in tv {
-        let claim_tier = claim.tier();
-        if status < claim_tier {
-            status = claim_tier
-        }
-    }
-
-    status
 }
 
 fn golden(args: &GoldenArgs) -> Result<(), Box<dyn Error>> {

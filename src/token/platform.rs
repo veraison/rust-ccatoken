@@ -1,12 +1,12 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2025 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
+#![allow(unexpected_cfgs)] // fixes warning from bitmask! macro
 
 use super::common::*;
 use super::errors::Error;
 use bitmask::*;
 use ciborium::de::from_reader;
 use ciborium::Value;
-use hex_literal::hex;
 
 const SW_COMPONENT_MTYP: i128 = 1;
 const SW_COMPONENT_MVAL: i128 = 2;
@@ -497,6 +497,7 @@ impl Platform {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn platform_ok() {

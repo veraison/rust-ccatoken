@@ -1,10 +1,9 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2025 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::cpak::Cpak;
 use super::errors::Error;
 use super::ITrustAnchorStore;
-use jsonwebtoken::jwk;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -54,6 +53,8 @@ impl ITrustAnchorStore for MemoTrustAnchorStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jsonwebtoken::jwk;
+
     const TEST_JSON_TA_OK_0: &str = include_str!("../../testdata/ta.json");
     const TEST_INST_ID_0: &[u8; 33] = include_bytes!("../../testdata/inst-id.bin");
     const TEST_IMPL_ID_0: &[u8; 32] = include_bytes!("../../testdata/impl-id.bin");

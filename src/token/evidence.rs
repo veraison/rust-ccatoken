@@ -1,4 +1,4 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2025 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::base64;
@@ -615,6 +615,7 @@ fn make_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, 
     Ok(cose_key)
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::store::{MemoRefValueStore, MemoTrustAnchorStore};
