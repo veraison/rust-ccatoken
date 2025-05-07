@@ -18,7 +18,7 @@
 //!
 //! const token: &[u8; 1222] = include_bytes!("../../testdata/cca-token-01.cbor");
 //!
-//! let mut e = Evidence::decode(&token.to_vec()).expect("decoding CCA token");
+//! let mut e = Evidence::decode(token.as_slice()).expect("decoding CCA token");
 //!
 //! const jta: &str = include_str!("../../testdata/ta.json");
 //! let mut tas = MemoTrustAnchorStore::new();
