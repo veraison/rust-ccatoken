@@ -75,8 +75,7 @@ impl<'de> Deserialize<'de> for Bytes {
 
 struct BytesVisitor;
 
-#[allow(clippy::needless_lifetimes)]
-impl<'de> Visitor<'de> for BytesVisitor {
+impl Visitor<'_> for BytesVisitor {
     type Value = Bytes;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
