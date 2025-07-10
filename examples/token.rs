@@ -14,10 +14,10 @@ fn realm_tokens_decode() {
     let files = vec!["testdata/realm-claims.cbor"];
 
     for f in files {
-        let buf = fs::read(f).unwrap_or_else(|_| panic!("loading file {}", f));
+        let buf = fs::read(f).unwrap_or_else(|_| panic!("loading file {f}"));
 
         let rc = Realm::decode(&buf).unwrap();
 
-        println!("{:#?}", rc);
+        println!("{rc:#?}");
     }
 }

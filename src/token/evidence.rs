@@ -76,10 +76,7 @@ impl CBORCollection {
 
         if let Value::Tag(t, m) = v {
             if t != CBOR_TAG {
-                return Err(Error::Syntax(format!(
-                    "expecting tag {}, got {}",
-                    CBOR_TAG, t
-                )));
+                return Err(Error::Syntax(format!("expecting tag {CBOR_TAG}, got {t}",)));
             }
 
             if let Value::Map(contents) = *m {
@@ -168,11 +165,11 @@ impl Evidence {
 
         t.platform
             .init_decoder(None)
-            .map_err(|e| Error::Syntax(format!("platform token: {:?}", e)))?;
+            .map_err(|e| Error::Syntax(format!("platform token: {e:?}")))?;
 
         t.realm
             .init_decoder(None)
-            .map_err(|e| Error::Syntax(format!("realm token: {:?}", e)))?;
+            .map_err(|e| Error::Syntax(format!("realm token: {e:?}")))?;
 
         t.platform_claims = Platform::decode(&t.platform.payload)?;
         t.realm_claims = Realm::decode(&t.realm.payload)?;

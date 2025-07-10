@@ -21,7 +21,7 @@ hex = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 hex-literal = "0.4.1"
 bitmask = "0.5.0"
-serde_with = { version = "3.4.0", features = ["hex"] }
+serde_with = { version = "3.14.0", features = ["hex"] }
 jsonwebtoken = "9.1.0"
 cose-rust = "0.1.7"
 ear = "0.3.0"

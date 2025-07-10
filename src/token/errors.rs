@@ -65,7 +65,7 @@ impl std::fmt::Debug for Error {
             | Error::HashCalculateFail(e)
             | Error::NoCoseAlgInHeader(e)
             | Error::BadInternalState(e) => {
-                write!(f, "{}", e)
+                write!(f, "{e}")
             }
         }
     }

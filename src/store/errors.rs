@@ -13,7 +13,7 @@ impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Syntax(e) | Error::Sema(e) => {
-                write!(f, "{}", e)
+                write!(f, "{e}")
             }
         }
     }
