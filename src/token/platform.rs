@@ -341,8 +341,7 @@ impl Platform {
 
         if x_len != 32 {
             return Err(Error::Sema(format!(
-                "implementation-id: expecting 32 bytes, got {}",
-                x_len
+                "implementation-id: expecting 32 bytes, got {x_len}"
             )));
         }
 
@@ -363,8 +362,7 @@ impl Platform {
 
         if x_len != 33 {
             return Err(Error::Sema(format!(
-                "instance-id: expecting 33 bytes, got {}",
-                x_len
+                "instance-id: expecting 33 bytes, got {x_len}"
             )));
         }
 
@@ -477,8 +475,7 @@ impl Platform {
 
             if _xi.is_none() {
                 return Err(Error::TypeMismatch(format!(
-                    "sw-component[{}] MUST be map",
-                    i
+                    "sw-component[{i}] MUST be map"
                 )));
             }
 
@@ -505,7 +502,7 @@ mod tests {
 
         let _p = Platform::decode(&buf).unwrap();
 
-        println!("{:#?}", _p);
+        println!("{_p:#?}");
     }
 
     #[test]

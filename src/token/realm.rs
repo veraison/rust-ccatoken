@@ -255,8 +255,7 @@ impl Realm {
         if self.profile.is_empty() {
             if x_len != 97 {
                 return Err(Error::Sema(format!(
-                    "public-key: expecting 97 bytes, got {}",
-                    x_len
+                    "public-key: expecting 97 bytes, got {x_len}"
                 )));
             }
             self.raw_rak[..].clone_from_slice(&x);
@@ -289,13 +288,12 @@ impl Realm {
 
         if x_len != 4 {
             return Err(Error::Sema(format!(
-                "extensible-measurements: expecting 4 slots, got {}",
-                x_len
+                "extensible-measurements: expecting 4 slots, got {x_len}"
             )));
         }
 
         for (i, xi) in x.iter().enumerate() {
-            self.rem[i] = to_measurement(xi, format!("extensible-measurement[{}]", i).as_str())?;
+            self.rem[i] = to_measurement(xi, format!("extensible-measurement[{i}]").as_str())?;
         }
 
         self.claims_set.set(Claims::Rem);
@@ -321,8 +319,7 @@ impl Realm {
 
         if x_len != 64 {
             return Err(Error::Sema(format!(
-                "personalization value: expecting 64 bytes, got {}",
-                x_len
+                "personalization value: expecting 64 bytes, got {x_len}"
             )));
         }
 
