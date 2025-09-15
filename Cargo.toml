@@ -24,6 +24,6 @@ bitmask = "0.5.0"
 serde_with = { version = "3.14.0", features = ["hex"] }
 jsonwebtoken = "9.1.0"
 cose-rust = "0.1.7"
-ear = "0.3.0"
+ear = "0.4.0"
 clap = { version = "4.4.10", features = ["derive"] }
 openssl = "0.10.34"
