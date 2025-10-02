@@ -757,4 +757,124 @@ mod tests {
             serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
         );
     }
+
+    // Additional reference value mismatch tests
+    const TEST_RV_IMPL_ID_MISMATCH: &str = include_str!("../../testdata/rv-impl-id-mismatch.json");
+    const TEST_RV_SWCOMP_MISMATCH: &str = include_str!("../../testdata/rv-swcomp-mismatch.json");
+    const TEST_RV_RIM_MISMATCH: &str = include_str!("../../testdata/rv-rim-mismatch.json");
+    const TEST_RV_REM_MISMATCH: &str = include_str!("../../testdata/rv-rem-mismatch.json");
+    const TEST_RV_PERSO_MISMATCH: &str = include_str!("../../testdata/rv-perso-mismatch.json");
+    const TEST_RV_EMPTY: &str = include_str!("../../testdata/rv-empty.json");
+
+    #[test]
+    fn appraise_platform_impl_id_mismatch() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_RV_IMPL_ID_MISMATCH)
+            .expect("loading TEST_RV_IMPL_ID_MISMATCH");
+
+        let mut e =
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
+
+        e.appraise(&rvs).expect("appraisal completed");
+
+        // The platform implementation ID is different, so platform should be NO_CLAIM
+        assert_eq!(
+            e.platform_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+    }
+
+    #[test]
+    fn appraise_platform_swcomp_mismatch() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_RV_SWCOMP_MISMATCH)
+            .expect("loading TEST_RV_SWCOMP_MISMATCH");
+
+        let mut e =
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
+
+        e.appraise(&rvs).expect("appraisal completed");
+
+        // The SW component measurement is different, so platform should be NO_CLAIM
+        assert_eq!(
+            e.platform_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+    }
+
+    #[test]
+    fn appraise_realm_rim_mismatch() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_RV_RIM_MISMATCH)
+            .expect("loading TEST_RV_RIM_MISMATCH");
+
+        let mut e =
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
+
+        e.appraise(&rvs).expect("appraisal completed");
+
+        // The realm initial measurement is different, so realm should be NO_CLAIM
+        assert_eq!(
+            e.realm_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+    }
+
+    #[test]
+    fn appraise_realm_rem_mismatch() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_RV_REM_MISMATCH)
+            .expect("loading TEST_RV_REM_MISMATCH");
+
+        let mut e =
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
+
+        e.appraise(&rvs).expect("appraisal completed");
+
+        // The realm extensible measurement is different, so realm should be NO_CLAIM
+        assert_eq!(
+            e.realm_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+    }
+
+    #[test]
+    fn appraise_realm_perso_mismatch() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_RV_PERSO_MISMATCH)
+            .expect("loading TEST_RV_PERSO_MISMATCH");
+
+        let mut e =
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
+
+        e.appraise(&rvs).expect("appraisal completed");
+
+        // The personalization value is different, so realm should be NO_CLAIM
+        assert_eq!(
+            e.realm_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+    }
+
+    #[test]
+    fn appraise_empty_refvals() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_RV_EMPTY)
+            .expect("loading TEST_RV_EMPTY");
+
+        let mut e =
+            Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
+
+        e.appraise(&rvs).expect("appraisal completed");
+
+        // No reference values found, so both should be NO_CLAIM
+        assert_eq!(
+            e.platform_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+        assert_eq!(
+            e.realm_tvec.instance_identity,
+            ear::claim::NO_CLAIM
+        );
+    }
 }
