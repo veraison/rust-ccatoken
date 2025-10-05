@@ -20,6 +20,8 @@ jobs:
       run: cargo fmt --all -- --check
     - name: Clippy checks
       run: cargo clippy --all-targets -- -D clippy::all -D clippy::cargo  -A clippy::multiple-crate-versions
+    - name: Documentation checks
+      run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
     - name: Build
       run: cargo build --verbose
     - name: Run tests

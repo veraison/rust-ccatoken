@@ -16,9 +16,11 @@ pub fn decode_str(v: &str) -> Result<Vec<u8>, Error> {
 }
 
 /// a `Vec<u8>` encoded as base64 in human readable serialization
+#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub struct Bytes(Vec<u8>);
 
+#[allow(dead_code)]
 impl Bytes {
     pub fn new() -> Self {
         Bytes(Vec::new())
@@ -73,6 +75,7 @@ impl<'de> Deserialize<'de> for Bytes {
     }
 }
 
+#[allow(dead_code)]
 struct BytesVisitor;
 
 impl Visitor<'_> for BytesVisitor {
