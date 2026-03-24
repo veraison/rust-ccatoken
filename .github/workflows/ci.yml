@@ -44,7 +44,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install latest stable Rust
     - name: Install latest Rust
       run: rustup update stable
     - uses: EmbarkStudios/cargo-deny-action@v1
