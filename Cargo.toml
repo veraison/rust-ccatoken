@@ -20,7 +20,7 @@ serde_json = { version = "1.0", features = ["raw_value"] }
 hex = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 hex-literal = "0.4.1"
-bitmask = "0.5.0"
+bitflags = "2.11.0"
 serde_with = { version = "3.14.0", features = ["hex"] }
 jsonwebtoken = "10.3.0"
 cose-rust = "0.1.7"
