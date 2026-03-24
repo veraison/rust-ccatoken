@@ -13,13 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Install latest stable Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
     - name: Formatting checks
       run: cargo fmt --all -- --check
     - name: Clippy checks
@@ -43,9 +37,8 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Install latest Rust
-      run: rustup update stable
-    - uses: EmbarkStudios/cargo-deny-action@v1
+    - uses: actions/checkout@v4
+    - uses: EmbarkStudios/cargo-deny-action@v2
       with:
         command: check ${{ matrix.checks }}
+        rust-version: "1.85.0"
