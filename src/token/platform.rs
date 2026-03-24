@@ -4,7 +4,7 @@
 
 use super::common::*;
 use super::errors::Error;
-use bitmask::*;
+use bitflags::bitflags;
 use ciborium::de::from_reader;
 use ciborium::Value;
 
@@ -14,15 +14,15 @@ const SW_COMPONENT_VERSION: i128 = 4;
 const SW_COMPONENT_SIGNER_ID: i128 = 5;
 const SW_COMPONENT_HASH_ALGO: i128 = 6;
 
-bitmask! {
-    #[derive(Debug)]
-    mask SwClaimsSet: u8 where flags SwClaims {
-        MTyp     = 0x01,
-        MVal     = 0x02,
-        Version  = 0x04,
-        SignerID = 0x08,
-        Config   = 0x10,
-        HashAlg  = 0x20,
+bitflags! {
+    #[derive(Debug, PartialEq, Copy, Clone)]
+    struct SwClaimsSet: u8 {
+        const MTYP      = 0x01;
+        const MVAL      = 0x02;
+        const VERSION   = 0x04;
+        const SIGNER_ID = 0x08;
+        const CONFIG    = 0x10;
+        const HASH_ALG  = 0x20;
     }
 }
 
@@ -53,12 +53,12 @@ impl SwComponent {
             signer_id: Default::default(),
             hash_alg: None,
 
-            claims_set: SwClaimsSet::none(),
+            claims_set: SwClaimsSet::empty(),
         }
     }
 
     fn set_hash_alg(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(SwClaims::HashAlg) {
+        if self.claims_set.contains(SwClaimsSet::HASH_ALG) {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
@@ -66,25 +66,25 @@ impl SwComponent {
 
         self.hash_alg = Some(x);
 
-        self.claims_set.set(SwClaims::HashAlg);
+        self.claims_set.set(SwClaimsSet::HASH_ALG, true);
 
         Ok(())
     }
 
     fn set_signer_id(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(SwClaims::SignerID) {
+        if self.claims_set.contains(SwClaimsSet::SIGNER_ID) {
             return Err(Error::DuplicatedClaim("signer-id".to_string()));
         }
 
         self.signer_id = to_bstr(v, "signer-id")?;
 
-        self.claims_set.set(SwClaims::SignerID);
+        self.claims_set.set(SwClaimsSet::SIGNER_ID, true);
 
         Ok(())
     }
 
     fn set_version(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(SwClaims::Version) {
+        if self.claims_set.contains(SwClaimsSet::VERSION) {
             return Err(Error::DuplicatedClaim("version".to_string()));
         }
 
@@ -92,13 +92,13 @@ impl SwComponent {
 
         self.version = Some(x);
 
-        self.claims_set.set(SwClaims::Version);
+        self.claims_set.set(SwClaimsSet::VERSION, true);
 
         Ok(())
     }
 
     fn set_mtyp(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(SwClaims::MTyp) {
+        if self.claims_set.contains(SwClaimsSet::MTYP) {
             return Err(Error::DuplicatedClaim("measurement-type".to_string()));
         }
 
@@ -106,19 +106,19 @@ impl SwComponent {
 
         self.mtyp = Some(x);
 
-        self.claims_set.set(SwClaims::MTyp);
+        self.claims_set.set(SwClaimsSet::MTYP, true);
 
         Ok(())
     }
 
     fn set_mval(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(SwClaims::MVal) {
+        if self.claims_set.contains(SwClaimsSet::MVAL) {
             return Err(Error::DuplicatedClaim("measurement-value".to_string()));
         }
 
         self.mval = to_measurement(v, "measurement-value")?;
 
-        self.claims_set.set(SwClaims::MVal);
+        self.claims_set.set(SwClaimsSet::MVAL, true);
 
         Ok(())
     }
@@ -150,8 +150,8 @@ impl SwComponent {
     fn validate(&self) -> Result<(), Error> {
         // only mval and signer-id are mandatory
         let mandatory_claims = [
-            (SwClaims::MVal, "measurement-value"),
-            (SwClaims::SignerID, "signer-id"),
+            (SwClaimsSet::MVAL, "measurement-value"),
+            (SwClaimsSet::SIGNER_ID, "signer-id"),
         ];
 
         for (c, n) in mandatory_claims.iter() {
@@ -179,18 +179,18 @@ const PLATFORM_SW_COMPONENTS: i128 = 2399;
 const PLATFORM_VERIFICATION_SERVICE: i128 = 2400;
 const PLATFORM_HASH_ALG: i128 = 2402; // XXX not requested, unassigned
 
-bitmask! {
-    #[derive(Debug)]
-    mask ClaimsSet: u16 where flags Claims {
-        Profile      = 0x01,
-        Challenge    = 0x02,
-        ImplID       = 0x04,
-        InstID       = 0x08,
-        Config       = 0x10,
-        Lifecycle    = 0x20,
-        SwComponents = 0x40,
-        Vsi          = 0x80,
-        HashAlg      = 0x100,
+bitflags! {
+    #[derive(Debug, PartialEq, Copy, Clone)]
+    struct ClaimsSet: u16 {
+        const PROFILE      = 0x01;
+        const CHALLENGE    = 0x02;
+        const IMPL_ID      = 0x04;
+        const INST_ID      = 0x08;
+        const CONFIG       = 0x10;
+        const LIFECYCLE    = 0x20;
+        const SW_COMPONENTS = 0x40;
+        const VSI          = 0x80;
+        const HASH_ALG     = 0x100;
     }
 }
 
@@ -229,7 +229,7 @@ impl Platform {
             sw_components: Default::default(),
             verification_service: None,
             hash_alg: String::from(""),
-            claims_set: ClaimsSet::none(),
+            claims_set: ClaimsSet::empty(),
         }
     }
 
@@ -276,14 +276,14 @@ impl Platform {
     fn validate(&self) -> Result<(), Error> {
         // all platform claims are mandatory except vsi
         let mandatory_claims = [
-            (Claims::Profile, "profile"),
-            (Claims::Challenge, "challenge"),
-            (Claims::ImplID, "implementation-id"),
-            (Claims::InstID, "instance-id"),
-            (Claims::Config, "config"),
-            (Claims::Lifecycle, "lifecycle"),
-            (Claims::SwComponents, "sw-components"),
-            (Claims::HashAlg, "hash-algo"),
+            (ClaimsSet::PROFILE, "profile"),
+            (ClaimsSet::CHALLENGE, "challenge"),
+            (ClaimsSet::IMPL_ID, "implementation-id"),
+            (ClaimsSet::INST_ID, "instance-id"),
+            (ClaimsSet::CONFIG, "config"),
+            (ClaimsSet::LIFECYCLE, "lifecycle"),
+            (ClaimsSet::SW_COMPONENTS, "sw-components"),
+            (ClaimsSet::HASH_ALG, "hash-algo"),
         ];
 
         for (c, n) in mandatory_claims.iter() {
@@ -298,7 +298,7 @@ impl Platform {
     }
 
     fn set_profile(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Profile) {
+        if self.claims_set.contains(ClaimsSet::PROFILE) {
             return Err(Error::DuplicatedClaim("profile".to_string()));
         }
 
@@ -314,25 +314,25 @@ impl Platform {
 
         self.profile = p;
 
-        self.claims_set.set(Claims::Profile);
+        self.claims_set.set(ClaimsSet::PROFILE, true);
 
         Ok(())
     }
 
     fn set_challenge(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Challenge) {
+        if self.claims_set.contains(ClaimsSet::CHALLENGE) {
             return Err(Error::DuplicatedClaim("challenge".to_string()));
         }
 
         self.challenge = to_measurement(v, "challenge")?;
 
-        self.claims_set.set(Claims::Challenge);
+        self.claims_set.set(ClaimsSet::CHALLENGE, true);
 
         Ok(())
     }
 
     fn set_impl_id(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::ImplID) {
+        if self.claims_set.contains(ClaimsSet::IMPL_ID) {
             return Err(Error::DuplicatedClaim("implementation-id".to_string()));
         }
 
@@ -347,13 +347,13 @@ impl Platform {
 
         self.impl_id[..].clone_from_slice(&x);
 
-        self.claims_set.set(Claims::ImplID);
+        self.claims_set.set(ClaimsSet::IMPL_ID, true);
 
         Ok(())
     }
 
     fn set_inst_id(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::InstID) {
+        if self.claims_set.contains(ClaimsSet::INST_ID) {
             return Err(Error::DuplicatedClaim("instance-id".to_string()));
         }
 
@@ -368,25 +368,25 @@ impl Platform {
 
         self.inst_id[..].clone_from_slice(&x);
 
-        self.claims_set.set(Claims::InstID);
+        self.claims_set.set(ClaimsSet::INST_ID, true);
 
         Ok(())
     }
 
     fn set_config(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Config) {
+        if self.claims_set.contains(ClaimsSet::CONFIG) {
             return Err(Error::DuplicatedClaim("config".to_string()));
         }
 
         self.config = to_bstr(v, "config")?;
 
-        self.claims_set.set(Claims::Config);
+        self.claims_set.set(ClaimsSet::CONFIG, true);
 
         Ok(())
     }
 
     fn set_lifecycle(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Lifecycle) {
+        if self.claims_set.contains(ClaimsSet::LIFECYCLE) {
             return Err(Error::DuplicatedClaim("lifecycle".to_string()));
         }
 
@@ -398,13 +398,13 @@ impl Platform {
 
         self.lifecycle = lc as u16;
 
-        self.claims_set.set(Claims::Lifecycle);
+        self.claims_set.set(ClaimsSet::LIFECYCLE, true);
 
         Ok(())
     }
 
     fn set_vsi(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Vsi) {
+        if self.claims_set.contains(ClaimsSet::VSI) {
             return Err(Error::DuplicatedClaim("verification-service".to_string()));
         }
 
@@ -416,20 +416,20 @@ impl Platform {
 
         self.verification_service = Some(_x);
 
-        self.claims_set.set(Claims::Vsi);
+        self.claims_set.set(ClaimsSet::VSI, true);
 
         Ok(())
     }
 
     // XXX this is exactly the same as realm's
     fn set_hash_alg(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::HashAlg) {
+        if self.claims_set.contains(ClaimsSet::HASH_ALG) {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
         self.hash_alg = to_hash_alg(v, "hash-algo-id")?;
 
-        self.claims_set.set(Claims::HashAlg);
+        self.claims_set.set(ClaimsSet::HASH_ALG, true);
 
         Ok(())
     }
@@ -449,7 +449,7 @@ impl Platform {
     }
 
     fn set_sw_components(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::SwComponents) {
+        if self.claims_set.contains(ClaimsSet::SW_COMPONENTS) {
             return Err(Error::DuplicatedClaim("software-components".to_string()));
         }
 
@@ -482,7 +482,7 @@ impl Platform {
             self.set_sw_component(xi)?;
         }
 
-        self.claims_set.set(Claims::SwComponents);
+        self.claims_set.set(ClaimsSet::SW_COMPONENTS, true);
 
         Ok(())
     }

@@ -5,8 +5,8 @@ edition = "2021"
 repository = "https://github.com/veraison/rust-ccatoken"
 license = "Apache-2.0"
 description = "CCA attestation token decoding, verification, and appraisal"
-keywords = [ "Arm", "CCA", "attestation" ]
-categories = [ "cryptography", "parser implementations" ]
+keywords = ["Arm", "CCA", "attestation"]
+categories = ["cryptography", "parser implementations"]
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,9 +20,9 @@ serde_json = { version = "1.0", features = ["raw_value"] }
 hex = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 hex-literal = "0.4.1"
-bitmask = "0.5.0"
+bitflags = "2.11.0"
 serde_with = { version = "3.14.0", features = ["hex"] }
-jsonwebtoken = "9.1.0"
+jsonwebtoken = "10.3.0"
 cose-rust = "0.1.7"
 ear = "0.4.0"
 clap = { version = "4.4.10", features = ["derive"] }

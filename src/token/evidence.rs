@@ -1,7 +1,6 @@
 // Copyright 2023-2025 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::base64;
 use super::common::*;
 use super::errors::Error;
 use super::platform::Platform;
@@ -10,6 +9,8 @@ use super::realm::REALM_PROFILE;
 use crate::store::PlatformRefValue;
 use crate::store::RealmRefValue;
 use crate::store::{Cpak, IRefValueStore, ITrustAnchorStore};
+use base64::engine::general_purpose;
+use base64::Engine;
 use ciborium::de::from_reader;
 use ciborium::Value;
 use cose::keys::CoseKey;
@@ -596,8 +597,12 @@ fn make_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, 
                 jwk::EllipticCurve::P521 => cose::keys::P_521,
                 c => return Err(Error::Key(format!("invalid EC2 curve {c:?}"))),
             });
-            cose_key.x(base64::decode_str(ec_params.x.as_str())?);
-            cose_key.y(base64::decode_str(ec_params.y.as_str())?);
+            cose_key.x(general_purpose::URL_SAFE_NO_PAD
+                .decode(ec_params.x.as_str())
+                .map_err(|e| Error::Key(format!("decoding EC2 x parameter failed: {e:?}")))?);
+            cose_key.y(general_purpose::URL_SAFE_NO_PAD
+                .decode(ec_params.y.as_str())
+                .map_err(|e| Error::Key(format!("decoding EC2 y parameter failed: {e:?}")))?);
         }
         jwk::AlgorithmParameters::OctetKeyPair(okp_params) => {
             cose_key.kty(cose::keys::OKP);
@@ -605,7 +610,9 @@ fn make_cose_key(cose_message: &CoseMessage, pkey: jwk::Jwk) -> Result<CoseKey, 
                 jwk::EllipticCurve::Ed25519 => cose::keys::ED25519,
                 c => return Err(Error::Key(format!("invalid OKP curve {c:?}"))),
             });
-            cose_key.x(base64::decode_str(okp_params.x.as_str())?);
+            cose_key.x(general_purpose::URL_SAFE_NO_PAD
+                .decode(okp_params.x.as_str())
+                .map_err(|e| Error::Key(format!("decoding OKP x parameter failed: {e:?}")))?);
         }
         a => return Err(Error::Key(format!("unsupported algorithm params {a:?}"))),
     }
