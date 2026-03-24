@@ -53,7 +53,6 @@ pub use self::platform::Platform;
 pub use self::platform::SwComponent;
 pub use self::realm::Realm;
 
-mod base64;
 mod common;
 mod errors;
 mod evidence;
