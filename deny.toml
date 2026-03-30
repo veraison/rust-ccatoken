@@ -104,6 +104,8 @@ allow = [
     # Considered Copyleft, but permitted in this project
     "MPL-2.0",
     "Unicode-3.0",
+    "BSD-3-Clause",
+    "MIT-0",
 ]
 
 # The confidence threshold for detecting a license from license text.
@@ -133,8 +135,8 @@ expression = "MIT AND ISC AND OpenSSL"
 # and the crate will be checked normally, which may produce warnings or errors
 # depending on the rest of your configuration
 license-files = [
-  # Each entry is a crate relative path, and the (opaque) hash of its contents
-  { path = "LICENSE", hash = 0xbd0eed23 }
+    # Each entry is a crate relative path, and the (opaque) hash of its contents
+    { path = "LICENSE", hash = 0xbd0eed23 },
 ]
 
 [licenses.private]
