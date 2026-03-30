@@ -4,7 +4,7 @@
 
 use super::common::*;
 use super::errors::Error;
-use bitmask::*;
+use bitflags::bitflags;
 use ciborium::de::from_reader;
 use ciborium::Value;
 
@@ -19,17 +19,17 @@ const REALM_HASH_ALG_LABEL: i128 = 44236;
 const REALM_RAK_LABEL: i128 = 44237;
 const REALM_RAK_HASH_ALG_LABEL: i128 = 44240;
 
-bitmask! {
-    #[derive(Debug)]
-    mask ClaimsSet: u8 where flags Claims {
-        Challenge  = 0x01,
-        Perso      = 0x02,
-        Rim        = 0x04,
-        Rem        = 0x08,
-        HashAlg    = 0x10,
-        Rak        = 0x20,
-        RakHashAlg = 0x40,
-        Profile    = 0x80,
+bitflags! {
+    #[derive(Debug, PartialEq, Copy, Clone)]
+    struct ClaimsSet: u8 {
+        const CHALLENGE  = 0x01;
+        const PERSO      = 0x02;
+        const RIM        = 0x04;
+        const REM        = 0x08;
+        const HASH_ALG   = 0x10;
+        const RAK        = 0x20;
+        const RAK_HASH_ALG = 0x40;
+        const PROFILE    = 0x80;
     }
 }
 
@@ -68,7 +68,7 @@ impl Realm {
             raw_rak: [0; 97],
             cose_rak: Default::default(),
             rak_hash_alg: String::from(""),
-            claims_set: ClaimsSet::none(),
+            claims_set: ClaimsSet::empty(),
         }
     }
 
@@ -125,13 +125,13 @@ impl Realm {
     fn validate(&self) -> Result<(), Error> {
         // all realm claims are mandatory
         let mandatory_claims = [
-            (Claims::Challenge, "challenge"),
-            (Claims::Perso, "personalization-value"),
-            (Claims::Rim, "initial-measurement"),
-            (Claims::Rem, "extensible-measurements"),
-            (Claims::HashAlg, "hash-algo-id"),
-            (Claims::Rak, "public-key"),
-            (Claims::RakHashAlg, "public-key-hash-algo-id"),
+            (ClaimsSet::CHALLENGE, "challenge"),
+            (ClaimsSet::PERSO, "personalization-value"),
+            (ClaimsSet::RIM, "initial-measurement"),
+            (ClaimsSet::REM, "extensible-measurements"),
+            (ClaimsSet::HASH_ALG, "hash-algo-id"),
+            (ClaimsSet::RAK, "public-key"),
+            (ClaimsSet::RAK_HASH_ALG, "public-key-hash-algo-id"),
         ];
 
         for (c, n) in mandatory_claims.iter() {
@@ -155,7 +155,7 @@ impl Realm {
     }
 
     fn set_profile(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Profile) {
+        if self.claims_set.contains(ClaimsSet::PROFILE) {
             return Err(Error::DuplicatedClaim("profile".to_string()));
         }
 
@@ -167,13 +167,13 @@ impl Realm {
 
         self.profile = p;
 
-        self.claims_set.set(Claims::Profile);
+        self.claims_set.set(ClaimsSet::PROFILE, true);
 
         Ok(())
     }
 
     fn set_challenge(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Challenge) {
+        if self.claims_set.contains(ClaimsSet::CHALLENGE) {
             return Err(Error::DuplicatedClaim("challenge".to_string()));
         }
 
@@ -194,13 +194,13 @@ impl Realm {
 
         self.challenge[..].clone_from_slice(&x);
 
-        self.claims_set.set(Claims::Challenge);
+        self.claims_set.set(ClaimsSet::CHALLENGE, true);
 
         Ok(())
     }
 
     fn set_rak_hash_alg(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::RakHashAlg) {
+        if self.claims_set.contains(ClaimsSet::RAK_HASH_ALG) {
             return Err(Error::DuplicatedClaim(
                 "public-key-hash-algo-id".to_string(),
             ));
@@ -208,37 +208,37 @@ impl Realm {
 
         self.rak_hash_alg = to_hash_alg(v, "public-key-hash-algo-id")?;
 
-        self.claims_set.set(Claims::RakHashAlg);
+        self.claims_set.set(ClaimsSet::RAK_HASH_ALG, true);
 
         Ok(())
     }
 
     fn set_hash_alg(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::HashAlg) {
+        if self.claims_set.contains(ClaimsSet::HASH_ALG) {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
         self.hash_alg = to_hash_alg(v, "hash-algo-id")?;
 
-        self.claims_set.set(Claims::HashAlg);
+        self.claims_set.set(ClaimsSet::HASH_ALG, true);
 
         Ok(())
     }
 
     fn set_rim(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Rim) {
+        if self.claims_set.contains(ClaimsSet::RIM) {
             return Err(Error::DuplicatedClaim("initial-measurement".to_string()));
         }
 
         self.rim = to_measurement(v, "initial-measurement")?;
 
-        self.claims_set.set(Claims::Rim);
+        self.claims_set.set(ClaimsSet::RIM, true);
 
         Ok(())
     }
 
     fn set_rak(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Rak) {
+        if self.claims_set.contains(ClaimsSet::RAK) {
             return Err(Error::DuplicatedClaim("public-key".to_string()));
         }
 
@@ -263,13 +263,13 @@ impl Realm {
             self.cose_rak = x
         }
 
-        self.claims_set.set(Claims::Rak);
+        self.claims_set.set(ClaimsSet::RAK, true);
 
         Ok(())
     }
 
     fn set_rem(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Rem) {
+        if self.claims_set.contains(ClaimsSet::REM) {
             return Err(Error::DuplicatedClaim(
                 "extensible-measurements".to_string(),
             ));
@@ -296,13 +296,13 @@ impl Realm {
             self.rem[i] = to_measurement(xi, format!("extensible-measurement[{i}]").as_str())?;
         }
 
-        self.claims_set.set(Claims::Rem);
+        self.claims_set.set(ClaimsSet::REM, true);
 
         Ok(())
     }
 
     fn set_perso(&mut self, v: &Value) -> Result<(), Error> {
-        if self.claims_set.contains(Claims::Perso) {
+        if self.claims_set.contains(ClaimsSet::PERSO) {
             return Err(Error::DuplicatedClaim("personalization-value".to_string()));
         }
 
@@ -324,7 +324,7 @@ impl Realm {
         }
 
         self.perso[..].clone_from_slice(&x);
-        self.claims_set.set(Claims::Perso);
+        self.claims_set.set(ClaimsSet::PERSO, true);
 
         Ok(())
     }

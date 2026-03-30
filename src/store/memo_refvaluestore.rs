@@ -32,19 +32,15 @@ impl MemoRefValueStore {
     pub fn load_json(&mut self, j: &str) -> Result<(), Error> {
         let v = RefValues::parse(j)?;
 
-        if v.platform.is_some() {
-            let p = v.platform.as_ref().unwrap();
-
-            for prv in p.iter() {
+        if let Some(platform) = v.platform {
+            for prv in platform.iter() {
                 self.p.write().unwrap().insert(prv.impl_id, prv.clone());
             }
         }
 
-        if v.realm.is_some() {
-            let p = v.realm.as_ref().unwrap();
-
-            for prv in p.iter() {
-                self.r.write().unwrap().insert(prv.rim.clone(), prv.clone());
+        if let Some(realm) = v.realm {
+            for rrv in realm.iter() {
+                self.r.write().unwrap().insert(rrv.rim.clone(), rrv.clone());
             }
         }
 
