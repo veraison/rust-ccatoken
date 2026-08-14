@@ -106,6 +106,7 @@ allow = [
     "Unicode-3.0",
     "BSD-3-Clause",
     "MIT-0",
+    "BlueOak-1.0.0",
 ]
 
 # The confidence threshold for detecting a license from license text.
