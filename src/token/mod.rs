@@ -52,6 +52,7 @@ pub use self::evidence::Evidence;
 pub use self::extension::ExtensionDevice;
 pub use self::platform::Platform;
 pub use self::platform::SwComponent;
+pub use self::platform_2024::Platform2024;
 pub use self::realm::Realm;
 pub use self::tbbrotpk::TbbRotpkItem;
 
@@ -60,5 +61,6 @@ mod errors;
 mod evidence;
 mod extension;
 mod platform;
+mod platform_2024;
 mod realm;
 mod tbbrotpk;

@@ -1,7 +1,7 @@
 # Copyright 2023 Contributors to the Veraison project.
 # SPDX-License-Identifier: Apache-2.0
 
-DIAG_TESTDATA := $(wildcard *.diag)
+DIAG_TESTDATA := $(wildcard platform-2024/*.diag *.diag)
 CBOR_TESTDATA := $(DIAG_TESTDATA:.diag=.cbor)
 
 %.cbor: %.diag ; diag2cbor.rb $< > $@
