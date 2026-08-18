@@ -1,4 +1,4 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2026 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::Error;
@@ -56,6 +56,16 @@ pub fn to_int(v: &Value, n: &str) -> Result<i128, Error> {
     }
 
     Ok(x.unwrap().into())
+}
+
+pub fn to_bool(v: &Value, n: &str) -> Result<bool, Error> {
+    let x = v.as_bool();
+
+    if x.is_none() {
+        return Err(Error::TypeMismatch(format!("{n} MUST be bool")));
+    }
+
+    Ok(x.unwrap())
 }
 
 pub fn to_measurement(v: &Value, n: &str) -> Result<Vec<u8>, Error> {

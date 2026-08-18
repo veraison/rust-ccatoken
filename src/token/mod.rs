@@ -49,6 +49,7 @@
 pub use self::common::*;
 pub use self::errors::Error;
 pub use self::evidence::Evidence;
+pub use self::extension::ExtensionDevice;
 pub use self::platform::Platform;
 pub use self::platform::SwComponent;
 pub use self::realm::Realm;
@@ -57,6 +58,7 @@ pub use self::tbbrotpk::TbbRotpkItem;
 mod common;
 mod errors;
 mod evidence;
+mod extension;
 mod platform;
 mod realm;
 mod tbbrotpk;
