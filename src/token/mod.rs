@@ -1,4 +1,4 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2026 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The token module provides an [`Evidence`] object to encapsulate business
@@ -52,9 +52,11 @@ pub use self::evidence::Evidence;
 pub use self::platform::Platform;
 pub use self::platform::SwComponent;
 pub use self::realm::Realm;
+pub use self::tbbrotpk::TbbRotpkItem;
 
 mod common;
 mod errors;
 mod evidence;
 mod platform;
 mod realm;
+mod tbbrotpk;
