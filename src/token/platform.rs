@@ -76,7 +76,7 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("signer-id".to_string()));
         }
 
-        self.signer_id = to_bstr(v, "signer-id")?;
+        self.signer_id = to_measurement(v, "signer-id")?;
 
         self.claims_set.set(SwClaimsSet::SIGNER_ID, true);
 
