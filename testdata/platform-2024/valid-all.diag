@@ -1,0 +1,131 @@
+/ CCA platform claim map /
+{
+  / cca-platform-profile /
+  265: "tag:arm.com,2024:cca_platform#2.0.0",
+
+  / cca-platform-challenge /
+  10: h'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+
+  / cca-platform-implementation-id /
+  2396: h'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+
+  / cca-platform-instance-id /
+  256: h'010BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+
+  / cca-platform-config /
+  2401: h'CFCFCFCF',
+
+  / cca-platform-lifecycle /
+  2395: 12288,
+
+  / cca-platform-sw-components /
+  2399: [
+    {
+      / measurement value /
+      2: h'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+
+      / signer id /
+      5: h'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+
+      / version /
+      4: "1.0.0",
+
+      / hash algorithm identifier /
+      6: "sha-256"
+
+    },
+    {
+      / measurement value /
+      2: h'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+
+      / signer id /
+      5: h'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+
+      / version /
+      4: "1.0.0",
+
+      / hash algorithm identifier /
+      6: "sha-256"
+    }
+  ],
+
+  / cca-platform-verification-service /
+  2400: "https://cca_verifier.org",
+
+  / cca-platform-hash-algo-id /
+  2402: "sha-256",
+
+  / cca-platform-client-id /
+  2394: 1,
+
+  / cca-platform-manufacturing-config /
+  2403: h'1234',
+
+  / cca-platform-extension /
+  2404: [
+    {
+        / hash algorithm identifier /
+        1: "sha-256",
+
+        / device measurements digest / 
+        2: h'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+        
+        / certificate chain digest /
+        3: h'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+        
+        / uses-IDE /
+        4: true,
+
+        / protocol /
+        5: "spdm-1.2.0",
+
+        / VCA digest /
+        6: h'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+        
+        / device type /
+        7: "cxl-type-3",
+        
+        / encryption type /
+        8: 0
+    },
+    {
+        / hash algorithm identifier /
+        1: "sha-256",
+
+        / device measurements digest / 
+        2: h'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+        
+        / certificate chain digest /
+        3: h'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+        
+        / uses-IDE /
+        4: true,
+
+        / protocol /
+        5: "protocol-1",
+        
+        / device type /
+        7: "device-type-1",
+    }
+  ]
+
+  / cca-platform-tbb-rotpk /
+  2405: [
+    {
+        / name /
+        1: "DM",
+
+        / active array index /
+        2: 0,
+
+        / index /
+        3: 1
+
+        / hash /
+        4: h'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    }
+  ]
+
+  / cca-platform-peer-signers /
+  2406: h'1234'
+}

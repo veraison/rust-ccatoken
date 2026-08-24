@@ -1,4 +1,4 @@
-// Copyright 2023-2025 Contributors to the Veraison project.
+// Copyright 2023-2026 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 #![allow(unexpected_cfgs)] // fixes warning from bitmask! macro
 
@@ -76,7 +76,7 @@ impl SwComponent {
             return Err(Error::DuplicatedClaim("signer-id".to_string()));
         }
 
-        self.signer_id = to_bstr(v, "signer-id")?;
+        self.signer_id = to_measurement(v, "signer-id")?;
 
         self.claims_set.set(SwClaimsSet::SIGNER_ID, true);
 
@@ -123,7 +123,7 @@ impl SwComponent {
         Ok(())
     }
 
-    fn parse(&mut self, contents: &[(Value, Value)]) -> Result<(), Error> {
+    pub(crate) fn parse(&mut self, contents: &[(Value, Value)]) -> Result<(), Error> {
         for (k, v) in contents.iter() {
             if let Value::Integer(i) = k {
                 match (*i).into() {
@@ -147,7 +147,7 @@ impl SwComponent {
         Ok(())
     }
 
-    fn validate(&self) -> Result<(), Error> {
+    pub(crate) fn validate(&self) -> Result<(), Error> {
         // only mval and signer-id are mandatory
         let mandatory_claims = [
             (SwClaimsSet::MVAL, "measurement-value"),

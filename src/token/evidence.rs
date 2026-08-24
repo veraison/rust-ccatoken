@@ -1,4 +1,4 @@
-// Copyright 2023-2025 Contributors to the Veraison project.
+// Copyright 2023-2026 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::common::*;
@@ -30,6 +30,7 @@ const PLATFORM_LABEL: i128 = 44234;
 const REALM_LABEL: i128 = 44241;
 
 const SHA_256: &str = "sha-256";
+const SHA_384: &str = "sha-384";
 const SHA_512: &str = "sha-512";
 
 #[derive(Debug, Deserialize)]
@@ -564,6 +565,8 @@ impl Evidence {
 fn hasher_from_alg(alg: &str) -> Result<Hasher, Error> {
     let h = match alg {
         SHA_256 => Hasher::new(MessageDigest::sha256())
+            .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?,
+        SHA_384 => Hasher::new(MessageDigest::sha384())
             .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?,
         SHA_512 => Hasher::new(MessageDigest::sha512())
             .map_err(|e| Error::HasherCreationFail(format!("{e:?}")))?,

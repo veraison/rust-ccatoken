@@ -1,4 +1,4 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2026 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 use super::Error;
@@ -6,9 +6,9 @@ use ciborium::Value;
 
 // Among the admissible values in
 // https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
-// we only support sha-256 and sha-512 as per RMM specification
+// we only support sha-256, sha-384 and sha-512 as per RMM specification
 pub fn is_valid_hash(value: &str) -> bool {
-    matches!(value, "sha-256" | "sha-512")
+    matches!(value, "sha-256" | "sha-384" | "sha-512")
 }
 
 pub fn is_valid_measurement(value: &[u8]) -> bool {
@@ -56,6 +56,16 @@ pub fn to_int(v: &Value, n: &str) -> Result<i128, Error> {
     }
 
     Ok(x.unwrap().into())
+}
+
+pub fn to_bool(v: &Value, n: &str) -> Result<bool, Error> {
+    let x = v.as_bool();
+
+    if x.is_none() {
+        return Err(Error::TypeMismatch(format!("{n} MUST be bool")));
+    }
+
+    Ok(x.unwrap())
 }
 
 pub fn to_measurement(v: &Value, n: &str) -> Result<Vec<u8>, Error> {
