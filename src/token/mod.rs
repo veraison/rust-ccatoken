@@ -54,6 +54,7 @@ pub use self::platform::Platform;
 pub use self::platform::SwComponent;
 pub use self::platform_2024::Platform2024;
 pub use self::realm::Realm;
+pub use self::realm_2024::Realm2024;
 pub use self::tbbrotpk::TbbRotpkItem;
 
 mod common;
@@ -63,4 +64,5 @@ mod extension;
 mod platform;
 mod platform_2024;
 mod realm;
+mod realm_2024;
 mod tbbrotpk;
