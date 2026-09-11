@@ -11,7 +11,7 @@ use bitflags::bitflags;
 use ciborium::de::from_reader;
 use ciborium::Value;
 
-const PLATFORM_PROFILE_2024: &str = "tag:arm.com,2024:cca_platform#2.0.0";
+pub const PLATFORM_PROFILE_2024: &str = "tag:arm.com,2024:cca_platform#2.0.0";
 const PLATFORM_PROFILE_LABEL: i128 = 265;
 const PLATFORM_CHALLENGE_LABEL: i128 = 10;
 const PLATFORM_IMPL_ID_LABEL: i128 = 2396;

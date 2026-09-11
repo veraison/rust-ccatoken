@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::Error;
+use ciborium::de::from_reader;
 use ciborium::Value;
+
+const EAT_PROFILE_LABEL: i128 = 265;
 
 // Among the admissible values in
 // https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml
@@ -89,4 +92,29 @@ pub fn to_hash_alg(v: &Value, n: &str) -> Result<String, Error> {
     }
 
     Ok(x)
+}
+
+/// Decode the profile name from a CBOR-encoded Platform or Realm token.
+pub fn decode_profile_name(buf: &Vec<u8>) -> Result<Option<String>, Error> {
+    let v: Value = from_reader(buf.as_slice()).map_err(|e| Error::Syntax(e.to_string()))?;
+
+    if let Value::Map(contents) = v {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(k_int) = k {
+                match (*k_int).into() {
+                    EAT_PROFILE_LABEL => {
+                        let profile_name = v.as_text().ok_or(Error::Syntax(
+                            "expecting text value for profile claim".to_string(),
+                        ))?;
+                        return Ok(Some(profile_name.to_string()));
+                    }
+                    _ => continue,
+                }
+            }
+        }
+    } else {
+        return Err(Error::Syntax("expecting map type".to_string()));
+    }
+
+    Ok(None)
 }

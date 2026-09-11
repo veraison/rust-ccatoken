@@ -166,8 +166,8 @@ impl SwComponent {
     }
 }
 
-const PLATFORM_PROFILE_LEGACY: &str = "http://arm.com/CCA-SSD/1.0.0";
-const PLATFORM_PROFILE: &str = "tag:arm.com,2023:cca_platform#1.0.0";
+pub const PLATFORM_PROFILE_LEGACY: &str = "http://arm.com/CCA-SSD/1.0.0";
+pub const PLATFORM_PROFILE: &str = "tag:arm.com,2023:cca_platform#1.0.0";
 
 const PLATFORM_PROFILE_LABEL: i128 = 265;
 const PLATFORM_CHALLENGE_LABEL: i128 = 10;
