@@ -3,9 +3,8 @@
 
 use super::common::*;
 use super::errors::Error;
-use super::platform::Platform;
-use super::realm::Realm;
-use super::realm::REALM_PROFILE;
+use super::platform_claims::PlatformClaims;
+use super::realm_claims::RealmClaims;
 use crate::store::PlatformRefValue;
 use crate::store::RealmRefValue;
 use crate::store::{Cpak, IRefValueStore, ITrustAnchorStore};
@@ -25,9 +24,11 @@ use openssl::hash::{Hasher, MessageDigest};
 use openssl::nid::Nid;
 use serde::Deserialize;
 
-const CBOR_TAG: u64 = 399;
+const LEGACY_CCA_TOKEN_COLLECTION_CBOR_TAG: u64 = 399;
+const CCA_TOKEN_CMW_CBOR_TAG: u64 = 907;
 const PLATFORM_LABEL: i128 = 44234;
 const REALM_LABEL: i128 = 44241;
+const EAT_CWT_COAP_CBOR_TAG: u64 = 263;
 
 const SHA_256: &str = "sha-256";
 const SHA_384: &str = "sha-384";
@@ -77,14 +78,20 @@ impl CBORCollection {
         let mut collection = CBORCollection::new();
 
         if let Value::Tag(t, m) = v {
-            if t != CBOR_TAG {
-                return Err(Error::Syntax(format!("expecting tag {CBOR_TAG}, got {t}",)));
-            }
-
-            if let Value::Map(contents) = *m {
-                collection.parse(contents)?;
+            if t == LEGACY_CCA_TOKEN_COLLECTION_CBOR_TAG {
+                if let Value::Map(contents) = *m {
+                    collection.legacy_parse(contents)?;
+                } else {
+                    return Err(Error::Syntax("expecting map type".to_string()));
+                }
+            } else if t == CCA_TOKEN_CMW_CBOR_TAG {
+                if let Value::Map(contents) = *m {
+                    collection.parse(contents)?;
+                } else {
+                    return Err(Error::Syntax("expecting map type".to_string()));
+                }
             } else {
-                return Err(Error::Syntax("expecting map type".to_string()));
+                return Err(Error::Syntax(format!("expecting tag {CCA_TOKEN_CMW_CBOR_TAG} or {LEGACY_CCA_TOKEN_COLLECTION_CBOR_TAG}, got {t}",)));
             }
         } else {
             return Err(Error::Syntax("expecting tag type".to_string()));
@@ -96,6 +103,53 @@ impl CBORCollection {
     }
 
     fn parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
+        for (k, v) in contents.iter() {
+            if let Value::Integer(i) = k {
+                match (*i).into() {
+                    PLATFORM_LABEL => {
+                        let err_msg = "expecting [263, token] array for platform token";
+
+                        let arr = v.as_array().ok_or(Error::Syntax(err_msg.to_string()))?;
+                        if arr.len() != 2 {
+                            return Err(Error::Syntax(err_msg.to_string()));
+                        }
+                        if arr.first() != Some(&Value::Integer(EAT_CWT_COAP_CBOR_TAG.into())) {
+                            return Err(Error::Syntax(err_msg.to_string()));
+                        }
+
+                        self.set_platform_token(
+                            arr.get(1).ok_or(Error::Syntax(err_msg.to_string()))?,
+                        )?;
+                    }
+                    REALM_LABEL => {
+                        let err_msg = "expecting [263, token] array for realm token";
+
+                        let arr = v.as_array().ok_or(Error::Syntax(err_msg.to_string()))?;
+                        if arr.len() != 2 {
+                            return Err(Error::Syntax(err_msg.to_string()));
+                        }
+                        if arr.first() != Some(&Value::Integer(EAT_CWT_COAP_CBOR_TAG.into())) {
+                            return Err(Error::Syntax(err_msg.to_string()));
+                        }
+
+                        self.set_realm_token(
+                            arr.get(1).ok_or(Error::Syntax(err_msg.to_string()))?,
+                        )?;
+                    }
+                    unknown => {
+                        return Err(Error::Syntax(format!(
+                            "unknown key {unknown} in collection"
+                        )))
+                    }
+                }
+            } else {
+                return Err(Error::Syntax("expecting integer key".to_string()));
+            }
+        }
+        Ok(())
+    }
+
+    fn legacy_parse(&mut self, contents: Vec<(Value, Value)>) -> Result<(), Error> {
         for (k, v) in contents.iter() {
             if let Value::Integer(i) = k {
                 match (*i).into() {
@@ -118,9 +172,9 @@ impl CBORCollection {
 /// Collects all the components of a CCA token
 pub struct Evidence {
     /// Decoded platform claims-set
-    pub platform_claims: Platform,
+    pub platform_claims: PlatformClaims,
     /// Decoded realm claims-set
-    pub realm_claims: Realm,
+    pub realm_claims: RealmClaims,
     /// COSE Sign1 envelope for the platform claims-set
     pub platform: CoseMessage,
     /// COSE Sign1 envelope for the realm claims-set
@@ -141,8 +195,8 @@ impl Evidence {
     /// Return a new, default Evidence object
     pub fn new() -> Self {
         Self {
-            platform_claims: Default::default(),
-            realm_claims: Default::default(),
+            platform_claims: PlatformClaims::default(),
+            realm_claims: RealmClaims::default(),
             platform: CoseMessage::new_sign(),
             realm: CoseMessage::new_sign(),
             platform_tvec: TrustVector::default(),
@@ -173,8 +227,8 @@ impl Evidence {
             .init_decoder(None)
             .map_err(|e| Error::Syntax(format!("realm token: {e:?}")))?;
 
-        t.platform_claims = Platform::decode(&t.platform.payload)?;
-        t.realm_claims = Realm::decode(&t.realm.payload)?;
+        t.platform_claims = PlatformClaims::decode(&t.platform.payload)?;
+        t.realm_claims = RealmClaims::decode(&t.realm.payload)?;
 
         Ok(t)
     }
@@ -183,7 +237,9 @@ impl Evidence {
         let evidence = &self.platform_claims;
 
         for refval in rvs.iter() {
-            if refval.config != evidence.config || refval.sw_components != evidence.sw_components {
+            if refval.config != *evidence.config()
+                || refval.sw_components != *evidence.sw_components()
+            {
                 continue;
             }
 
@@ -219,7 +275,7 @@ impl Evidence {
             let must_match_rem = !refval.rem.is_empty();
 
             if must_match_rem {
-                if refval.rem == evidence.rem {
+                if refval.rem == *evidence.rem() {
                     self.realm_tvec.executables.set(APPROVED_RUNTIME);
 
                     return Ok(());
@@ -253,7 +309,7 @@ impl Evidence {
     /// general a failure to appraise is only reflected in the trust vectors'
     /// state.
     pub fn appraise(&mut self, rvs: &impl IRefValueStore) -> Result<(), Error> {
-        let impl_id = &self.platform_claims.impl_id;
+        let impl_id = self.platform_claims.impl_id();
 
         let r = rvs.lookup_platform(impl_id);
 
@@ -284,7 +340,7 @@ impl Evidence {
             return Ok(());
         }
 
-        let rim = &self.realm_claims.rim;
+        let rim = self.realm_claims.rim();
         let r = rvs.lookup_realm(rim);
 
         if r.is_none() {
@@ -313,7 +369,7 @@ impl Evidence {
     /// no need to waste resources on realm verification if the trust anchor is
     /// not verified.
     fn verify_platform_token(&mut self, cpak: Cpak) -> Result<(), Error> {
-        let inst_id = self.platform_claims.inst_id;
+        let inst_id = *self.platform_claims.inst_id();
 
         match cpak.pkey {
             None => {
@@ -363,7 +419,18 @@ impl Evidence {
 
         let mut cose_key: CoseKey;
 
-        if self.realm_claims.profile == REALM_PROFILE {
+        if self.realm_claims.profile() == "" {
+            // for legacy profile, realm_pub_key is a raw RAK key
+            // We need to re-format it into a COSE_Key
+            cose_key = self
+                .ecdsa_public_key_from_raw(&realm_pub_key)
+                .map_err(|e| {
+                    // a failure to reformat should happen only if the rak claim is malformed
+                    self.realm_tvec.set_all(UNEXPECTED_EVIDENCE);
+
+                    Error::Syntax(format!("formatting the rak claim into ECDSA failed: {e:?}"))
+                })?;
+        } else {
             // it is already a COSE_Key, it just need decoding
             cose_key = CoseKey::new();
             cose_key.bytes = realm_pub_key;
@@ -373,16 +440,6 @@ impl Evidence {
 
                 Error::Syntax(format!("decoding the rak claim as COSE_Key failed: {e:?}"))
             })?;
-        } else {
-            // re-format RAK into a COSE_Key
-            cose_key = self
-                .ecdsa_public_key_from_raw(&realm_pub_key)
-                .map_err(|e| {
-                    // a failure to reformat should happen only if the rak claim is malformed
-                    self.realm_tvec.set_all(UNEXPECTED_EVIDENCE);
-
-                    Error::Syntax(format!("formatting the rak claim into ECDSA failed: {e:?}"))
-                })?;
         }
 
         // explicitly set key-ops to verify
@@ -436,7 +493,7 @@ impl Evidence {
         assert!(!self.realm.bytes.is_empty(), "realm token is mandatory");
 
         // verify platform evidence first
-        let inst_id = self.platform_claims.inst_id;
+        let inst_id = *self.platform_claims.inst_id();
 
         match tas.lookup(&inst_id) {
             None => {
@@ -537,8 +594,8 @@ impl Evidence {
         // Evidence that has been successfully decoded (and therefore
         // successfully validated).
         let realm_pub_key = self.realm_claims.get_realm_key().unwrap();
-        let realm_pub_key_hash_alg = self.realm_claims.get_rak_hash_alg().unwrap();
-        let platform_nonce = self.platform_claims.get_challenge().unwrap();
+        let realm_pub_key_hash_alg = self.realm_claims.rak_hash_alg();
+        let platform_nonce = self.platform_claims.challenge();
 
         let mut hasher = hasher_from_alg(realm_pub_key_hash_alg.as_str())?;
 
@@ -637,6 +694,14 @@ mod tests {
     const TEST_TA_2_BAD: &str = include_str!("../../testdata/ta-02-bad.json");
     const TEST_TA_TFA: &str = include_str!("../../testdata/ta-tfa.json");
 
+    const TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK: &[u8; 1600] =
+        include_bytes!("../../testdata/token-2024/cca-token-draft-ffm-03-all-claims.cbor");
+    const TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK: &[u8; 1147] = include_bytes!(
+        "../../testdata/token-2024/cca-token-draft-ffm-03-mandatory-claims-only.cbor"
+    );
+    const TEST_CCA_RVS_FFM_03: &str = include_str!("../../testdata/token-2024/rv-ffm-03.json");
+    const TEST_TA_FFM_03: &str = include_str!("../../testdata/token-2024/ta-ffm-03.json");
+
     #[test]
     fn decode_good_token() {
         let r = Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice());
@@ -654,7 +719,7 @@ mod tests {
             Evidence::decode(TEST_CCA_TOKEN_1_OK.as_slice()).expect("decoding TEST_CCA_TOKEN_1_OK");
 
         e.appraise(&rvs)
-            .expect("validation successful for both platform and realm");
+            .expect("appraisal successful for both platform and realm");
 
         println!(
             "platform trust vector: {}",
@@ -750,6 +815,80 @@ mod tests {
 
         let mut tas = MemoTrustAnchorStore::new();
         tas.load_json(TEST_TA_TFA).expect("loading trust anchors");
+
+        let r = evidence.verify(&tas);
+
+        assert!(r.is_ok());
+
+        assert!(evidence.realm_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+        assert!(evidence.platform_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&evidence.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
+        );
+    }
+
+    #[test]
+    fn appraise_draft_ffm_03_token_ok() {
+        let mut rvs = MemoRefValueStore::new();
+        rvs.load_json(TEST_CCA_RVS_FFM_03)
+            .expect("loading TEST_CCA_RVS_FFM_03");
+
+        let mut e = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK.as_slice())
+            .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK");
+
+        e.appraise(&rvs)
+            .expect("appraisal successful for both platform and realm");
+
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&e.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&e.realm_tvec).unwrap()
+        );
+    }
+
+    #[test]
+    fn verify_draft_ffm_03_token_all_claims_ok() {
+        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK.as_slice())
+            .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK");
+
+        let mut tas = MemoTrustAnchorStore::new();
+        tas.load_json(TEST_TA_FFM_03)
+            .expect("loading trust anchors");
+
+        let r = evidence.verify(&tas);
+
+        assert!(r.is_ok());
+
+        assert!(evidence.realm_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+        assert!(evidence.platform_tvec.instance_identity.get() == TRUSTWORTHY_INSTANCE);
+
+        println!(
+            "platform trust vector: {}",
+            serde_json::to_string_pretty(&evidence.platform_tvec).unwrap()
+        );
+        println!(
+            "realm trust vector: {}",
+            serde_json::to_string_pretty(&evidence.realm_tvec).unwrap()
+        );
+    }
+
+    #[test]
+    fn verify_draft_ffm_03_token_mandatory_claims_only_ok() {
+        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK.as_slice())
+            .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK");
+
+        let mut tas = MemoTrustAnchorStore::new();
+        tas.load_json(TEST_TA_FFM_03)
+            .expect("loading trust anchors");
 
         let r = evidence.verify(&tas);
 
