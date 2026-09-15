@@ -1,0 +1,34 @@
+{
+    "cca-platform-token": {
+        "cca-platform-profile": "tag:arm.com,2024:cca_platform#2.0.0",
+        "cca-platform-implementation-id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "cca-platform-instance-id": "AQICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC",
+        "cca-platform-config": "AQID",
+        "cca-platform-lifecycle": 12288,
+        "cca-platform-sw-components": [
+            {
+                "measurement-value": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=",
+                "signer-id": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ="
+            }
+        ],
+        "cca-platform-hash-algo-id": "sha-256",
+        "cca-platform-client-id": 1
+    },
+    "cca-realm-delegated-token": {
+        "cca-realm-profile": "tag:arm.com,2024:realm#2.0.0",
+        "cca-realm-challenge": "QUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQkFCQUJBQg==",
+        "cca-realm-personalization-value": "QURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBREFEQURBRA==",
+        "cca-realm-initial-measurement": "Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQw==",
+        "cca-realm-extensible-measurements": [
+            "Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQw==",
+            "Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQw==",
+            "Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQw==",
+            "Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQw=="
+        ]
+        ,
+        "cca-realm-hash-algo-id": "sha-256",
+        "cca-realm-public-key": "pCACIVgwgvvRMqm1w5aHn7sVNA2QUJeOVcedUnmiug6VhU834gzS9k87crVwu9dz7uLOdoQlIlgw7fVF7b6J/6/g6Wu9RuJw8geWxEi5ja9Gp2TSdELm5u2E+M7IF+bsxqcdOj3n1n7NAQI=",
+        "cca-realm-public-key-hash-algo-id": "sha-512",
+        "cca-realm-mec-policy": "private"
+    }
+}

@@ -164,15 +164,15 @@ fn map_evidence_to_refval(e: &token::Evidence) -> Result<String, Box<dyn Error>>
 }
 
 fn map_evidence_to_platform_refval(
-    p: &token::Platform,
+    p: &token::PlatformClaims,
 ) -> Result<PlatformRefValue, Box<dyn Error>> {
     let mut v = PlatformRefValue {
-        impl_id: p.impl_id,
-        config: p.config.clone(),
+        impl_id: *p.impl_id(),
+        config: p.config().clone(),
         ..Default::default()
     };
 
-    for other in &p.sw_components {
+    for other in p.sw_components() {
         let swc = SwComponent {
             mval: other.mval.clone(),
             signer_id: other.signer_id.clone(),
@@ -186,28 +186,31 @@ fn map_evidence_to_platform_refval(
     Ok(v)
 }
 
-fn map_evidence_to_realm_refval(p: &token::Realm) -> Result<RealmRefValue, Box<dyn Error>> {
+fn map_evidence_to_realm_refval(p: &token::RealmClaims) -> Result<RealmRefValue, Box<dyn Error>> {
     let mut v = RealmRefValue {
-        perso: p.perso.to_vec(),
-        rim: p.rim.clone(),
-        rak_hash_alg: p.rak_hash_alg.clone(),
+        perso: p.perso().to_vec(),
+        rim: p.rim().clone(),
+        rak_hash_alg: p.rak_hash_alg().clone(),
         ..Default::default()
     };
 
-    for (i, other) in p.rem.iter().enumerate() {
+    for (i, other) in p.rem().iter().enumerate() {
         v.rem[i].value.clone_from(other);
     }
 
     Ok(v)
 }
 
-fn map_evidence_to_trustanchor(p: &token::Platform, cpak: &str) -> Result<String, Box<dyn Error>> {
+fn map_evidence_to_trustanchor(
+    p: &token::PlatformClaims,
+    cpak: &str,
+) -> Result<String, Box<dyn Error>> {
     let raw_pkey = RawValue::from_string(cpak.to_string())?;
 
     let v = Cpak {
         raw_pkey,
-        inst_id: p.inst_id,
-        impl_id: p.impl_id,
+        inst_id: *p.inst_id(),
+        impl_id: *p.impl_id(),
         ..Default::default() // pkey is not serialised
     };
 
@@ -216,13 +219,13 @@ fn map_evidence_to_trustanchor(p: &token::Platform, cpak: &str) -> Result<String
     Ok(j)
 }
 
-fn map_str_to_cpak(p: &token::Platform, cpak_str: &str) -> Result<Cpak, Box<dyn Error>> {
+fn map_str_to_cpak(p: &token::PlatformClaims, cpak_str: &str) -> Result<Cpak, Box<dyn Error>> {
     let raw_pkey = RawValue::from_string(cpak_str.to_string())?;
 
     let mut v = Cpak {
         raw_pkey,
-        inst_id: p.inst_id,
-        impl_id: p.impl_id,
+        inst_id: *p.inst_id(),
+        impl_id: *p.impl_id(),
         ..Default::default()
     };
     v.parse_pkey()?;
