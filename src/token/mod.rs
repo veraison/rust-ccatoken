@@ -50,12 +50,11 @@ pub use self::common::*;
 pub use self::errors::Error;
 pub use self::evidence::Evidence;
 pub use self::extension::ExtensionDevice;
-pub use self::platform::Platform;
-pub use self::platform::SwComponent;
-pub use self::platform_2024::Platform2024;
+pub use self::platform::{Platform, SwComponent, PLATFORM_PROFILE, PLATFORM_PROFILE_LEGACY};
+pub use self::platform_2024::{Platform2024, PLATFORM_PROFILE_2024};
 pub use self::platform_claims::PlatformClaims;
-pub use self::realm::Realm;
-pub use self::realm_2024::Realm2024;
+pub use self::realm::{Realm, REALM_PROFILE};
+pub use self::realm_2024::{Realm2024, REALM_PROFILE_2024};
 pub use self::realm_claims::RealmClaims;
 pub use self::tbbrotpk::TbbRotpkItem;
 
