@@ -1,4 +1,4 @@
-// Copyright 2023 Contributors to the Veraison project.
+// Copyright 2023-2026 Contributors to the Veraison project.
 // SPDX-License-Identifier: Apache-2.0
 
 //! The store module provides traits and concrete types to implement the
@@ -30,7 +30,8 @@
 //!             "signer-id": "07060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918"
 //!           }
 //!         ],
-//!         "platform-configuration": "0107060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918"
+//!         "platform-configuration": "0107060504030201000f0e0d0c0b0a090817161514131211101f1e1d1c1b1a1918",
+//!         "client-id": 1
 //!       }
 //!     ],
 //!     "realm": [
@@ -83,8 +84,10 @@ pub use self::irefvaluestore::IRefValueStore;
 pub use self::itrustanchorstore::ITrustAnchorStore;
 pub use self::memo_refvaluestore::MemoRefValueStore;
 pub use self::memo_trustanchorstore::MemoTrustAnchorStore;
+pub use self::platformrefvalue::ExtensionDevice;
 pub use self::platformrefvalue::PlatformRefValue;
 pub use self::platformrefvalue::SwComponent;
+pub use self::platformrefvalue::TbbRotpkItem;
 pub use self::realmrefvalue::RealmRefValue;
 pub use self::refvalues::RefValues;
 
