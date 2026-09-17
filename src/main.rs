@@ -1,6 +1,9 @@
+// Copyright 2023-2026 Contributors to the Veraison project.
+// SPDX-License-Identifier: Apache-2.0
+
 use ccatoken::store::{
-    Cpak, MemoRefValueStore, MemoTrustAnchorStore, PlatformRefValue, RealmRefValue, RefValues,
-    SwComponent,
+    Cpak, ExtensionDevice, MemoRefValueStore, MemoTrustAnchorStore, PlatformRefValue,
+    RealmRefValue, RefValues, SwComponent, TbbRotpkItem,
 };
 use ccatoken::token;
 use clap::Parser;
@@ -164,15 +167,18 @@ fn map_evidence_to_refval(e: &token::Evidence) -> Result<String, Box<dyn Error>>
 }
 
 fn map_evidence_to_platform_refval(
-    p: &token::Platform,
+    p: &token::PlatformClaims,
 ) -> Result<PlatformRefValue, Box<dyn Error>> {
     let mut v = PlatformRefValue {
-        impl_id: p.impl_id,
-        config: p.config.clone(),
+        impl_id: *p.impl_id(),
+        config: p.config().clone(),
+        client_id: p.client_id(),
+        manufacturing_config: p.manufacturing_config().cloned(),
+        peer_signers: p.peer_signers().cloned(),
         ..Default::default()
     };
 
-    for other in &p.sw_components {
+    for other in p.sw_components() {
         let swc = SwComponent {
             mval: other.mval.clone(),
             signer_id: other.signer_id.clone(),
@@ -183,31 +189,66 @@ fn map_evidence_to_platform_refval(
         v.sw_components.push(swc)
     }
 
+    if let Some(devices) = p.extension() {
+        v.extension = Some(
+            devices
+                .iter()
+                .map(|other| ExtensionDevice {
+                    hash_algo_id: other.hash_algo_id.clone(),
+                    device_measurements_digest: other.device_measurements_digest.clone(),
+                    certificate_chain_digest: other.certificate_chain_digest.clone(),
+                    uses_ide: other.uses_ide,
+                    protocol: other.protocol.clone(),
+                    vca_digest: other.vca_digest.clone(),
+                    device_type: other.device_type.clone(),
+                    encryption_type: other.encryption_type,
+                })
+                .collect(),
+        );
+    }
+
+    if let Some(items) = p.tbb_rotpk() {
+        v.tbb_rotpk = Some(
+            items
+                .iter()
+                .map(|other| TbbRotpkItem {
+                    name: other.name.clone(),
+                    active_array_index: other.active_array_index,
+                    index: other.index,
+                    hash: other.hash.clone(),
+                })
+                .collect(),
+        );
+    }
+
     Ok(v)
 }
 
-fn map_evidence_to_realm_refval(p: &token::Realm) -> Result<RealmRefValue, Box<dyn Error>> {
+fn map_evidence_to_realm_refval(p: &token::RealmClaims) -> Result<RealmRefValue, Box<dyn Error>> {
     let mut v = RealmRefValue {
-        perso: p.perso.to_vec(),
-        rim: p.rim.clone(),
-        rak_hash_alg: p.rak_hash_alg.clone(),
+        perso: p.perso().to_vec(),
+        rim: p.rim().clone(),
+        rak_hash_alg: p.rak_hash_alg().clone(),
         ..Default::default()
     };
 
-    for (i, other) in p.rem.iter().enumerate() {
+    for (i, other) in p.rem().iter().enumerate() {
         v.rem[i].value.clone_from(other);
     }
 
     Ok(v)
 }
 
-fn map_evidence_to_trustanchor(p: &token::Platform, cpak: &str) -> Result<String, Box<dyn Error>> {
+fn map_evidence_to_trustanchor(
+    p: &token::PlatformClaims,
+    cpak: &str,
+) -> Result<String, Box<dyn Error>> {
     let raw_pkey = RawValue::from_string(cpak.to_string())?;
 
     let v = Cpak {
         raw_pkey,
-        inst_id: p.inst_id,
-        impl_id: p.impl_id,
+        inst_id: *p.inst_id(),
+        impl_id: *p.impl_id(),
         ..Default::default() // pkey is not serialised
     };
 
@@ -216,13 +257,13 @@ fn map_evidence_to_trustanchor(p: &token::Platform, cpak: &str) -> Result<String
     Ok(j)
 }
 
-fn map_str_to_cpak(p: &token::Platform, cpak_str: &str) -> Result<Cpak, Box<dyn Error>> {
+fn map_str_to_cpak(p: &token::PlatformClaims, cpak_str: &str) -> Result<Cpak, Box<dyn Error>> {
     let raw_pkey = RawValue::from_string(cpak_str.to_string())?;
 
     let mut v = Cpak {
         raw_pkey,
-        inst_id: p.inst_id,
-        impl_id: p.impl_id,
+        inst_id: *p.inst_id(),
+        impl_id: *p.impl_id(),
         ..Default::default()
     };
     v.parse_pkey()?;

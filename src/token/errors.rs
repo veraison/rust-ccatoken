@@ -15,9 +15,9 @@ pub enum Error {
     DuplicatedClaim(String),
     #[error("Claim type mismatch: {0}")]
     TypeMismatch(String),
-    #[error("Missing Platform Token: {0}")]
-    UnknownProfile(String),
     #[error("Unknown profile: {0}")]
+    UnknownProfile(String),
+    #[error("Missing Platform Token: {0}")]
     MissingPlatformToken(String),
     #[error("Missing Realm Token: {0}")]
     MissingRealmToken(String),
