@@ -1,0 +1,69 @@
+{
+  "platform": [
+    {
+      "implementation-id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "sw-components": [
+        {
+          "measurement-value": "0303030303030303030303030303030303030303030303030303030303030303",
+          "signer-id": "0404040404040404040404040404040404040404040404040404040404040404",
+          "version": null,
+          "component-type": null
+        }
+      ],
+      "platform-configuration": "010203",
+      "client-id": 1,
+      "manufacturing-config": [
+        1,
+        2,
+        3
+      ],
+      "extension": [
+        {
+          "hash-algo-id": "sha-256",
+          "device-measurements-digest": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+          "certificate-chain-digest": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+          "uses-ide": true,
+          "protocol": "spdm-1.2.0",
+          "vca-digest": "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f",
+          "device-type": "cxl-type-3",
+          "encryption-type": 0
+        },
+        {
+          "device-measurements-digest": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+          "certificate-chain-digest": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+          "uses-ide": true,
+          "protocol": "other-protocol-1.2.3",
+          "device-type": "other-device-2"
+        }
+      ],
+      "tbb-rotpk": [
+        {
+          "name": "DM",
+          "active-array-index": 0,
+          "index": 0,
+          "hash": "0707070707070707070707070707070707070707070707070707070707070707"
+        }
+      ],
+      "peer-signers": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ]
+    }
+  ],
+  "realm": [
+    {
+      "initial-measurement": "43434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343",
+      "rak-hash-algorithm": "sha-512",
+      "extensible-measurements": [
+        "43434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343",
+        "43434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343",
+        "43434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343",
+        "43434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343434343"
+      ],
+      "personalization-value": "41444144414441444144414441444144414441444144414441444144414441444144414441444144414441444144414441444144414441444144414441444144"
+    }
+  ]
+}

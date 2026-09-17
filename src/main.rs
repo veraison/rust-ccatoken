@@ -1,6 +1,9 @@
+// Copyright 2023-2026 Contributors to the Veraison project.
+// SPDX-License-Identifier: Apache-2.0
+
 use ccatoken::store::{
-    Cpak, MemoRefValueStore, MemoTrustAnchorStore, PlatformRefValue, RealmRefValue, RefValues,
-    SwComponent,
+    Cpak, ExtensionDevice, MemoRefValueStore, MemoTrustAnchorStore, PlatformRefValue,
+    RealmRefValue, RefValues, SwComponent, TbbRotpkItem,
 };
 use ccatoken::token;
 use clap::Parser;
@@ -169,6 +172,9 @@ fn map_evidence_to_platform_refval(
     let mut v = PlatformRefValue {
         impl_id: *p.impl_id(),
         config: p.config().clone(),
+        client_id: p.client_id(),
+        manufacturing_config: p.manufacturing_config().cloned(),
+        peer_signers: p.peer_signers().cloned(),
         ..Default::default()
     };
 
@@ -181,6 +187,38 @@ fn map_evidence_to_platform_refval(
         };
 
         v.sw_components.push(swc)
+    }
+
+    if let Some(devices) = p.extension() {
+        v.extension = Some(
+            devices
+                .iter()
+                .map(|other| ExtensionDevice {
+                    hash_algo_id: other.hash_algo_id.clone(),
+                    device_measurements_digest: other.device_measurements_digest.clone(),
+                    certificate_chain_digest: other.certificate_chain_digest.clone(),
+                    uses_ide: other.uses_ide,
+                    protocol: other.protocol.clone(),
+                    vca_digest: other.vca_digest.clone(),
+                    device_type: other.device_type.clone(),
+                    encryption_type: other.encryption_type,
+                })
+                .collect(),
+        );
+    }
+
+    if let Some(items) = p.tbb_rotpk() {
+        v.tbb_rotpk = Some(
+            items
+                .iter()
+                .map(|other| TbbRotpkItem {
+                    name: other.name.clone(),
+                    active_array_index: other.active_array_index,
+                    index: other.index,
+                    hash: other.hash.clone(),
+                })
+                .collect(),
+        );
     }
 
     Ok(v)

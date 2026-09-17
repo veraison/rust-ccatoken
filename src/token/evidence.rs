@@ -191,6 +191,17 @@ impl Default for Evidence {
     }
 }
 
+fn optional_reference_matches<T, U>(reference: Option<&T>, evidence: Option<&U>) -> bool
+where
+    T: PartialEq<U>,
+{
+    match (reference, evidence) {
+        (None, _) => true,
+        (Some(reference), Some(evidence)) => reference == evidence,
+        (Some(_), None) => false,
+    }
+}
+
 impl Evidence {
     /// Return a new, default Evidence object
     pub fn new() -> Self {
@@ -239,6 +250,17 @@ impl Evidence {
         for refval in rvs.iter() {
             if refval.config != *evidence.config()
                 || refval.sw_components != *evidence.sw_components()
+                || refval.client_id != evidence.client_id()
+                || !optional_reference_matches(
+                    refval.manufacturing_config.as_ref(),
+                    evidence.manufacturing_config(),
+                )
+                || !optional_reference_matches(refval.extension.as_ref(), evidence.extension())
+                || !optional_reference_matches(refval.tbb_rotpk.as_ref(), evidence.tbb_rotpk())
+                || !optional_reference_matches(
+                    refval.peer_signers.as_ref(),
+                    evidence.peer_signers(),
+                )
             {
                 continue;
             }
@@ -267,12 +289,21 @@ impl Evidence {
     fn appraise_realm(&mut self, rvs: &[RealmRefValue]) -> Result<(), Error> {
         let evidence = &self.realm_claims;
 
+        // Set "runtime opaque" claim in trust vector based on MEC policy claim
+        if let Some(mec_policy) = evidence.mec_policy_rev03() {
+            if mec_policy == "private" {
+                self.realm_tvec.runtime_opaque.set(ENCRYPTED_MEMORY_RUNTIME);
+            } else if mec_policy == "shared" {
+                self.realm_tvec.runtime_opaque.set(VISIBLE_MEMORY_RUNTIME);
+            }
+        }
+
         // if we are here is because we have a match on RIM, so we don't need to check
         // it again.
         for refval in rvs.iter() {
             // if the ref-val provider has stated that REM is expected to be
             // populated in a certain way, then we need to check for a match
-            let must_match_rem = !refval.rem.is_empty();
+            let must_match_rem = refval.rem.iter().any(|entry| !entry.value.is_empty());
 
             if must_match_rem {
                 if refval.rem == *evidence.rem() {
@@ -699,7 +730,8 @@ mod tests {
     const TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK: &[u8; 1147] = include_bytes!(
         "../../testdata/token-2024/cca-token-draft-ffm-03-mandatory-claims-only.cbor"
     );
-    const TEST_CCA_RVS_FFM_03: &str = include_str!("../../testdata/token-2024/rv-ffm-03.json");
+    const TEST_CCA_RVS_FFM_03: &str =
+        include_str!("../../testdata/token-2024/rv-ffm-03-all-claims.json");
     const TEST_TA_FFM_03: &str = include_str!("../../testdata/token-2024/ta-ffm-03.json");
 
     #[test]
