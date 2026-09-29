@@ -105,15 +105,10 @@ impl RealmClaims {
         }
     }
 
-    /// The Memory Encryption Context policy of the Realm.
-    ///
-    /// Appended with _rev03 here, as it is a string "private" | "shared"
-    /// in draft-ffm-03 only. The claim format changes to an
-    /// int (0: shared, 1: private) in draft-ffm-04.
-    pub fn mec_policy_rev03(&self) -> Option<&String> {
+    pub fn mec_policy(&self) -> Option<u8> {
         match self {
             RealmClaims::Realm(_) => None,
-            RealmClaims::Realm2024(r) => Some(&r.mec_policy),
+            RealmClaims::Realm2024(r) => Some(r.mec_policy),
         }
     }
 }
