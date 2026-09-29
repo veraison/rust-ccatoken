@@ -20,6 +20,8 @@ const REALM_RAK_HASH_ALG_LABEL: i128 = 44240;
 const REALM_MEC_POLICY_LABEL: i128 = 44243;
 const REALM_INST_ID_LABEL: i128 = 256;
 const UEID_RAND: u8 = 0x01;
+const MEC_POLICY_SHARED: u8 = 0;
+const MEC_POLICY_PRIVATE: u8 = 1;
 
 bitflags! {
     #[derive(Debug, PartialEq, Copy, Clone)]
@@ -50,7 +52,7 @@ pub struct Realm2024 {
     pub hash_alg: String,     // 44236 => text
     pub cose_rak: Vec<u8>,    // 44237 => bytes .cbor COSE_Key (profile==REALM_PROFILE)
     pub rak_hash_alg: String, // 44240 => text
-    pub mec_policy: String,   // 44243 => "private" | "shared"
+    pub mec_policy: u8,       // 44243 => 0 = shared, 1 => private
 
     claims_set: ClaimsSet,
 }
@@ -73,7 +75,7 @@ impl Realm2024 {
             hash_alg: String::from(""),
             cose_rak: Default::default(),
             rak_hash_alg: String::from(""),
-            mec_policy: String::from(""),
+            mec_policy: MEC_POLICY_SHARED,
             claims_set: ClaimsSet::empty(),
         }
     }
@@ -313,11 +315,18 @@ impl Realm2024 {
             return Err(Error::DuplicatedClaim("mec-policy".to_string()));
         }
 
-        let mec_policy = to_tstr(v, "mec-policy")?;
+        let mec_policy: u8 = match v.as_integer().and_then(|i| i.try_into().ok()) {
+            Some(x) => x,
+            None => {
+                return Err(Error::Sema(
+                    "mec-policy: could not find mec_policy".to_string(),
+                ))
+            }
+        };
 
-        if mec_policy != "private" && mec_policy != "shared" {
+        if mec_policy != MEC_POLICY_SHARED && mec_policy != MEC_POLICY_PRIVATE {
             return Err(Error::Sema(format!(
-                "mec-policy: expecting 'private' or 'shared', got '{mec_policy}'"
+                "mec-policy: expecting 0 or 1, got '{mec_policy}'"
             )));
         }
 

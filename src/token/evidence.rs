@@ -29,6 +29,8 @@ const CCA_TOKEN_CMW_CBOR_TAG: u64 = 907;
 const PLATFORM_LABEL: i128 = 44234;
 const REALM_LABEL: i128 = 44241;
 const EAT_CWT_COAP_CBOR_TAG: u64 = 263;
+const MEC_POLICY_SHARED: u8 = 0;
+const MEC_POLICY_PRIVATE: u8 = 1;
 
 const SHA_256: &str = "sha-256";
 const SHA_384: &str = "sha-384";
@@ -293,11 +295,11 @@ impl Evidence {
         let evidence = &self.realm_claims;
 
         // Set "runtime opaque" claim in trust vector based on MEC policy claim
-        if let Some(mec_policy) = evidence.mec_policy_rev03() {
-            if mec_policy == "private" {
-                self.realm_tvec.runtime_opaque.set(ENCRYPTED_MEMORY_RUNTIME);
-            } else if mec_policy == "shared" {
+        if let Some(mec_policy) = evidence.mec_policy() {
+            if mec_policy == MEC_POLICY_SHARED {
                 self.realm_tvec.runtime_opaque.set(VISIBLE_MEMORY_RUNTIME);
+            } else if mec_policy == MEC_POLICY_PRIVATE {
+                self.realm_tvec.runtime_opaque.set(ENCRYPTED_MEMORY_RUNTIME);
             }
         }
 
@@ -728,9 +730,9 @@ mod tests {
     const TEST_TA_2_BAD: &str = include_str!("../../testdata/ta-02-bad.json");
     const TEST_TA_TFA: &str = include_str!("../../testdata/ta-tfa.json");
 
-    const TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK: &[u8; 1600] =
+    const TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK: &[u8] =
         include_bytes!("../../testdata/token-2024/cca-token-draft-ffm-03-all-claims.cbor");
-    const TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK: &[u8; 1147] = include_bytes!(
+    const TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK: &[u8] = include_bytes!(
         "../../testdata/token-2024/cca-token-draft-ffm-03-mandatory-claims-only.cbor"
     );
     const TEST_CCA_RVS_FFM_03: &str =
@@ -874,7 +876,7 @@ mod tests {
         rvs.load_json(TEST_CCA_RVS_FFM_03)
             .expect("loading TEST_CCA_RVS_FFM_03");
 
-        let mut e = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK.as_slice())
+        let mut e = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK)
             .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK");
 
         e.appraise(&rvs)
@@ -892,7 +894,7 @@ mod tests {
 
     #[test]
     fn verify_draft_ffm_03_token_all_claims_ok() {
-        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK.as_slice())
+        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK)
             .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_03_ALL_OK");
 
         let mut tas = MemoTrustAnchorStore::new();
@@ -918,7 +920,7 @@ mod tests {
 
     #[test]
     fn verify_draft_ffm_03_token_mandatory_claims_only_ok() {
-        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK.as_slice())
+        let mut evidence = Evidence::decode(TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK)
             .expect("decoding TEST_CCA_TOKEN_DRAFT_FFM_MANDATORY_ONLY_OK");
 
         let mut tas = MemoTrustAnchorStore::new();
