@@ -18,6 +18,7 @@ const REALM_HASH_ALG_LABEL: i128 = 44236;
 const REALM_RAK_LABEL: i128 = 44237;
 const REALM_RAK_HASH_ALG_LABEL: i128 = 44240;
 const REALM_MEC_POLICY_LABEL: i128 = 44243;
+const REALM_INST_ID_LABEL: i128 = 256;
 
 bitflags! {
     #[derive(Debug, PartialEq, Copy, Clone)]
@@ -31,6 +32,7 @@ bitflags! {
         const RAK_HASH_ALG = 0x40;
         const PROFILE    = 0x80;
         const MEC_POLICY  = 0x100;
+        const INST_ID  = 0x200;
     }
 }
 
@@ -39,6 +41,7 @@ bitflags! {
 #[derive(Debug)]
 pub struct Realm2024 {
     pub challenge: [u8; 64],  //    10 => bytes .size 64
+    pub inst_id: [u8; 33],    //   256 => bytes .size 33
     pub profile: String,      //   265 => text
     pub perso: [u8; 64],      // 44235 => bytes .size 64
     pub rim: Vec<u8>,         // 44238 => bytes .size {32,48,64}
@@ -61,6 +64,7 @@ impl Realm2024 {
     pub fn new() -> Self {
         Self {
             challenge: [0; 64],
+            inst_id: [0; 33],
             profile: String::from(""),
             perso: [0; 64],
             rim: vec![0, 64],
@@ -103,6 +107,7 @@ impl Realm2024 {
                     REALM_RAK_LABEL => self.set_rak(v)?,
                     REALM_RAK_HASH_ALG_LABEL => self.set_rak_hash_alg(v)?,
                     REALM_MEC_POLICY_LABEL => self.set_mec_policy(v)?,
+                    REALM_INST_ID_LABEL => self.set_inst_id(v)?,
                     _ => continue,
                 }
             } else {
@@ -131,6 +136,7 @@ impl Realm2024 {
             (ClaimsSet::RAK, "public-key"),
             (ClaimsSet::RAK_HASH_ALG, "public-key-hash-algo-id"),
             (ClaimsSet::MEC_POLICY, "mec-policy"),
+            (ClaimsSet::INST_ID, "instance-id"),
         ];
 
         for (claim, name) in mandatory_claims.iter() {
@@ -317,6 +323,30 @@ impl Realm2024 {
         self.mec_policy = mec_policy;
 
         self.claims_set.set(ClaimsSet::MEC_POLICY, true);
+
+        Ok(())
+    }
+
+    fn set_inst_id(&mut self, v: &Value) -> Result<(), Error> {
+        if self.claims_set.contains(ClaimsSet::INST_ID) {
+            return Err(Error::DuplicatedClaim("instance-id".to_string()));
+        }
+
+        let inst_id: [u8; 33] = to_bstr(v, "instance-id")?
+            .try_into()
+            .map_err(|_| Error::Sema("instance-id must be exactly 33 bytes long".to_string()))?;
+
+        let initial = inst_id[0];
+
+        if initial != 0x01 {
+            return Err(Error::Sema(format!(
+                "instance-id: initial byte must be 0x01 '{initial}'"
+            )));
+        }
+
+        self.inst_id = inst_id;
+
+        self.claims_set.set(ClaimsSet::INST_ID, true);
 
         Ok(())
     }
