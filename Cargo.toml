@@ -27,3 +27,8 @@ cose-rust = "0.1.7"
 ear = "0.6.0"
 clap = { version = "4.4.10", features = ["derive"] }
 openssl = "0.10.72"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+multiple_crate_versions = "allow"
