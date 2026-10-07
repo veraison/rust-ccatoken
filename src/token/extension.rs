@@ -100,7 +100,7 @@ impl ExtensionDevice {
             return Err(Error::DuplicatedClaim("hash-algo-id".to_string()));
         }
 
-        let hash_algo_id = to_tstr(v, "hash-algo-id")?;
+        let hash_algo_id = to_hash_alg(v, "hash-algo-id")?;
 
         if hash_algo_id.is_empty() {
             return Err(Error::Sema(
