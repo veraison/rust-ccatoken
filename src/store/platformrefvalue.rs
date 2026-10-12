@@ -83,10 +83,6 @@ pub struct TbbRotpkItem {
     /// e.g. "CM" or "DM"
     pub name: String,
 
-    /// The active ROTPK array
-    #[serde(rename = "active-array-index")]
-    pub active_array_index: i128,
-
     /// The index in the active array
     pub index: i128,
 
@@ -99,7 +95,6 @@ impl TbbRotpkItem {
     pub fn new() -> Self {
         Self {
             name: Default::default(),
-            active_array_index: Default::default(),
             index: Default::default(),
             hash: Default::default(),
         }
@@ -115,10 +110,7 @@ impl Default for TbbRotpkItem {
 // Allow comparison between TBBRotpkItems in evidence and reference values.
 impl PartialEq<token::TbbRotpkItem> for TbbRotpkItem {
     fn eq(&self, other: &token::TbbRotpkItem) -> bool {
-        self.name == other.name
-            && self.active_array_index == other.active_array_index
-            && self.index == other.index
-            && self.hash == other.hash
+        self.name == other.name && self.index == other.index && self.hash == other.hash
     }
 }
 
