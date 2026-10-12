@@ -213,7 +213,6 @@ fn map_evidence_to_platform_refval(
                 .iter()
                 .map(|other| TbbRotpkItem {
                     name: other.name.clone(),
-                    active_array_index: other.active_array_index,
                     index: other.index,
                     hash: other.hash.clone(),
                 })

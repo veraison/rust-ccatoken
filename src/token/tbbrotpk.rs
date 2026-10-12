@@ -8,26 +8,23 @@ use bitflags::bitflags;
 use ciborium::Value;
 
 const TBB_ROTPK_NAME: i128 = 1;
-const TBB_ROTPK_ACTIVE_ARRAY_INDEX: i128 = 2;
-const TBB_ROTPK_INDEX: i128 = 3;
-const TBB_ROTPK_HASH: i128 = 4;
+const TBB_ROTPK_INDEX: i128 = 2;
+const TBB_ROTPK_HASH: i128 = 3;
 
 bitflags! {
     #[derive(Debug, PartialEq, Copy, Clone)]
     struct TbbRotpkClaimsSet: u8 {
         const NAME                  = 0x01;
-        const ACTIVE_ARRAY_INDEX    = 0x02;
-        const INDEX                 = 0x04;
-        const HASH                  = 0x08;
+        const INDEX                 = 0x02;
+        const HASH                  = 0x04;
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct TbbRotpkItem {
-    pub name: String,             // 1, text
-    pub active_array_index: i128, // 2, int
-    pub index: i128,              // 3, int
-    pub hash: Vec<u8>,            // 4, bytes .size {32,48,64}
+    pub name: String,  // 1, text
+    pub index: i128,   // 2, int
+    pub hash: Vec<u8>, // 3, bytes .size {32,48,64}
 
     claims_set: TbbRotpkClaimsSet,
 }
@@ -42,7 +39,6 @@ impl TbbRotpkItem {
     pub fn new() -> Self {
         Self {
             name: String::from(""),
-            active_array_index: 0,
             index: 0,
             hash: Default::default(),
 
@@ -66,23 +62,6 @@ impl TbbRotpkItem {
         self.name = name;
 
         self.claims_set.set(TbbRotpkClaimsSet::NAME, true);
-
-        Ok(())
-    }
-
-    fn set_active_array_index(&mut self, v: &Value) -> Result<(), Error> {
-        if self
-            .claims_set
-            .contains(TbbRotpkClaimsSet::ACTIVE_ARRAY_INDEX)
-        {
-            return Err(Error::DuplicatedClaim("active-array-index".to_string()));
-        }
-
-        self.active_array_index = to_int(v, "active-array-index")?;
-
-        self.claims_set
-            .set(TbbRotpkClaimsSet::ACTIVE_ARRAY_INDEX, true);
-
         Ok(())
     }
 
@@ -115,7 +94,6 @@ impl TbbRotpkItem {
             if let Value::Integer(i) = k {
                 match (*i).into() {
                     TBB_ROTPK_NAME => self.set_name(v)?,
-                    TBB_ROTPK_ACTIVE_ARRAY_INDEX => self.set_active_array_index(v)?,
                     TBB_ROTPK_INDEX => self.set_index(v)?,
                     TBB_ROTPK_HASH => self.set_hash(v)?,
                     unknown => {
@@ -139,7 +117,6 @@ impl TbbRotpkItem {
         // Within each TBB RoTPK item, all claims are mandatory
         let mandatory_claims = [
             (TbbRotpkClaimsSet::NAME, "name"),
-            (TbbRotpkClaimsSet::ACTIVE_ARRAY_INDEX, "active-array-index"),
             (TbbRotpkClaimsSet::INDEX, "index"),
             (TbbRotpkClaimsSet::HASH, "hash"),
         ];
